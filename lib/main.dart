@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-// Kita import halaman login saja
-import 'screens/login_page.dart';
+import 'package:google_fonts/google_fonts.dart'; // Import ini
+import 'screens/login_page.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -13,13 +13,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ERP Login UI',
+      title: 'ERP Flutter',
       theme: ThemeData(
-        scaffoldBackgroundColor: Colors.white,
-        primarySwatch: Colors.grey,
+        // Pakai font 'Inter' atau 'Poppins' biar modern
+        textTheme: GoogleFonts.interTextTheme(), 
+        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
         useMaterial3: true,
       ),
-      // Langsung panggil LoginPage dari folder screens
       home: const LoginPage(),
     );
   }

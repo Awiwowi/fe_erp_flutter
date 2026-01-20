@@ -4,12 +4,17 @@ class CustomTextField extends StatelessWidget {
   final String label;
   final String hintText;
   final IconData icon;
+  // Tambahkan Controller
+  final TextEditingController? controller; 
+  final bool isPassword;
 
   const CustomTextField({
     super.key,
     required this.label,
     required this.hintText,
     required this.icon,
+    this.controller, // Terima controller dari luar
+    this.isPassword = false, // Opsi untuk password
   });
 
   @override
@@ -28,6 +33,8 @@ class CustomTextField extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: TextField(
+            controller: controller, // Pasang controller di sini
+            obscureText: isPassword, // Gunakan logika password
             decoration: InputDecoration(
               border: InputBorder.none,
               prefixIcon: Icon(icon, color: Colors.grey),

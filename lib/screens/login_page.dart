@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_textfield.dart';
-import 'sign_up_page.dart';
-import 'forgot_password_page.dart';
-import 'dashboard_page.dart';
+import '../services/auth_service.dart';
+import 'dashboard_page.dart'; // Pastikan ini mengarah ke Dashboard kamu
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,8 +11,61 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  bool _obscurePassword = true;
-  bool _keepSignedIn = false;
+  // 1. Controller untuk menangkap inputan user
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  
+  bool _isLoading = false; // Status Loading
+
+  // 2. Fungsi Logika Login (API)
+  void _handleLogin() async {
+    // A. Validasi Input Kosong
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email dan Password tidak boleh kosong!")),
+      );
+      return;
+    }
+
+    // B. Mulai Loading (Tombol jadi muter-muter)
+    setState(() => _isLoading = true);
+
+    print("Mencoba login dengan: ${_emailController.text}");
+
+    // C. Tembak API ke Ngrok
+    bool success = await AuthService().login(
+      _emailController.text,
+      _passwordController.text,
+    );
+
+    // D. Selesai Loading
+    setState(() => _isLoading = false);
+
+    // E. Cek Hasil Login
+    if (success) {
+      if (!mounted) return;
+      print("Login Sukses! Masuk Dashboard...");
+      
+      // Pindah Halaman
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardPage()),
+        (route) => false,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login Berhasil!"), backgroundColor: Colors.green),
+      );
+    } else {
+      if (!mounted) return;
+      print("Login Gagal!");
+      
+      // Muncul Pesan Error
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login Gagal. Cek Email/Password atau URL Ngrok."), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,108 +76,49 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 20),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
               const SizedBox(height: 40),
-              const Text(
-                "Welcome Back!",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Let’s login for explore continues",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
+              const Text("Welcome Back!", textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 40),
-              const CustomTextField(
-                label: "Email or Phone Number",
-                hintText: "Enter your email",
+
+              // 3. Input Email (Wajib Pasang Controller)
+              CustomTextField(
+                label: "Email",
+                hintText: "Enter email",
                 icon: Icons.email_outlined,
+                controller: _emailController, // <--- PENTING
               ),
               const SizedBox(height: 20),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TextField(
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.grey),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                        hintText: "Enter your password",
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  ),
-                ],
+              
+              // 4. Input Password (Wajib Pasang Controller)
+              CustomTextField(
+                label: "Password",
+                hintText: "Enter password",
+                icon: Icons.lock_outline,
+                isPassword: true,
+                controller: _passwordController, // <--- PENTING
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 24, 
-                    height: 24,
-                    child: Checkbox(
-                      value: _keepSignedIn,
-                      activeColor: const Color(0xFF4B4B4B),
-                      side: const BorderSide(color: Colors.grey),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      onChanged: (val) => setState(() => _keepSignedIn = val!),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text("Keep me signed in", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordPage())),
-                    child: const Text("Forgot password", style: TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold, fontSize: 13)),
-                  ),
-                ],
-              ),
+
               const SizedBox(height: 30),
+
+              // 5. TOMBOL SIGN IN (BAGIAN PALING KRUSIAL)
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B4B4B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                  onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const DashboardPage()), (route) => false),
-                  child: const Text("Sign in", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 0, 74, 192),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  // KALAU INI LANGSUNG NAVIGATOR, PASTI INSTAN.
+                  // GANTI JADI _handleLogin AGAR DIA NUNGGU API.
+                  onPressed: _isLoading ? null : _handleLogin, 
+                  
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) // Animasi loading
+                    : const Text("Sign in", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Don't have an account? ", style: TextStyle(color: Colors.black)),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpPage())),
-                    child: const Text("Sign Up here", style: TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+              // ...
             ],
           ),
         ),
