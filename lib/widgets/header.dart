@@ -3,8 +3,18 @@ import '../constants/colors.dart';
 
 class Header extends StatelessWidget {
   final VoidCallback onMenuTap;
+  
+  // 1. Tambahkan parameter untuk menampung data
+  final String userName;
+  final String userRole;
 
-  const Header({super.key, required this.onMenuTap});
+  const Header({
+    super.key, 
+    required this.onMenuTap,
+    // 2. Tambahkan di constructor dengan nilai default biar aman
+    this.userName = "User",
+    this.userRole = "Staff",
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,15 +44,24 @@ class Header extends StatelessWidget {
           
           const Spacer(),
 
-          // User Profile (Static dulu)
+          // User Profile (Sekarang Dinamis)
           Row(
             children: [
+              // Sembunyikan teks jika layar terlalu kecil (< 400)
               if (MediaQuery.of(context).size.width > 400)
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text("Thomas Anree", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text("UX Designer", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    // 3. Panggil variabel userName
+                    Text(
+                      userName, 
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)
+                    ),
+                    // 4. Panggil variabel userRole
+                    Text(
+                      userRole, 
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)
+                    ),
                   ],
                 ),
               const SizedBox(width: 12),

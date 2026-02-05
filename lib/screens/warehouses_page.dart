@@ -119,18 +119,37 @@ class _WarehousesPageState extends State<WarehousesPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start, // Rata kiri
               children: [
-                const Text("Warehouse List", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.black)),
-                ElevatedButton.icon(
-                  onPressed: () => _showFormDialog(),
-                  icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                  label: const Text("Add Warehouse", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5))),
-                ),
-              ],
-            ),
+                // 1. JUDUL & SUBJUDUL
+                 const Text(
+                  "Data Warehouse", 
+                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.black)
+               ),
+                 const Text(
+                   "Manage location and storage", 
+                   style: TextStyle(fontSize: 12, color: Colors.grey)
+              ),
+
+                 const SizedBox(height: 15), // Beri jarak ke bawah
+
+                // 2. TOMBOL ADD (SEKARANG DI BAWAH)
+                 SizedBox(
+                   width: double.infinity, // Agar tombol memanjang penuh (opsional, bisa dihapus jika ingin kecil)
+                   child: ElevatedButton.icon(
+                     onPressed: () => _showFormDialog(), // Pastikan nama fungsi dialog sesuai codingan Anda
+                     icon: const Icon(Icons.add, color: Colors.white),
+                     label: const Text("Add New Warehouse", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                     style: ElevatedButton.styleFrom(
+                       backgroundColor: AppColors.primary,
+                       padding: const EdgeInsets.symmetric(vertical: 12), // Tinggi tombol
+                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                     ),
+                   ),
+               ),
+             ],
+          ),
             const SizedBox(height: 20),
             
             _isLoading 

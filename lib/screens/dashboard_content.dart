@@ -34,6 +34,10 @@ class _DashboardContentState extends State<DashboardContent> {
   void _fetchData() async {
     setState(() => _isLoading = true);
     var data = await DataService().getUsers();
+    
+    // Cek mounted agar tidak error jika pindah halaman saat loading
+    if (!mounted) return;
+
     setState(() {
       _users = data;
       _isLoading = false;
@@ -56,6 +60,7 @@ class _DashboardContentState extends State<DashboardContent> {
 
     if (confirm) {
       bool success = await DataService().deleteUser(id);
+      if (!mounted) return;
       if (success) {
         _fetchData();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User deleted successfully"), backgroundColor: Colors.green));
@@ -72,14 +77,11 @@ class _DashboardContentState extends State<DashboardContent> {
     // Controllers
     final TextEditingController nameCtrl = TextEditingController(text: item?['name']);
     final TextEditingController emailCtrl = TextEditingController(text: item?['email']);
-    final TextEditingController passwordCtrl = TextEditingController(); // Password kosong saat edit
+    final TextEditingController passwordCtrl = TextEditingController(); 
 
     // Handle Role Selection
-    // Jika edit, ambil role pertama dari array roles (biasanya Laravel Spatie return array)
     String? currentRole;
     if (isEdit && item?['roles'] != null && (item?['roles'] as List).isNotEmpty) {
-      // Mengambil nama role dari object role spatie (biasanya [{name: 'admin', ...}])
-      // Sesuaikan logika ini dengan respons API Laravel kamu
       var roleData = item?['roles'][0]; 
       if (roleData is String) {
         currentRole = roleData;
@@ -147,7 +149,7 @@ class _DashboardContentState extends State<DashboardContent> {
                 ElevatedButton(
                   onPressed: () async {
                     if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
-                      return; // Validasi sederhana
+                      return; 
                     }
 
                     Navigator.pop(ctx); // Tutup Dialog
@@ -155,15 +157,13 @@ class _DashboardContentState extends State<DashboardContent> {
                     Map<String, dynamic> data = {
                       "name": nameCtrl.text,
                       "email": emailCtrl.text,
-                      "role": selectedRole, // Kirim role sebagai string (Laravel controller handle syncRoles)
+                      "role": selectedRole, 
                     };
 
                     bool success;
                     if (isEdit) {
-                      // Update tidak kirim password
                       success = await DataService().updateUser(item['id'], data);
                     } else {
-                      // Create wajib kirim password
                       data["password"] = passwordCtrl.text; 
                       success = await DataService().createUser(data);
                     }
@@ -209,9 +209,13 @@ class _DashboardContentState extends State<DashboardContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // --- BAGIAN HEADER DIPERBAIKI ---
+            // Menggunakan Wrap agar responsif di HP (tombol turun ke bawah jika tidak muat)
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 10,     // Jarak horizontal antar elemen
+              runSpacing: 15,  // Jarak vertikal jika tombol turun ke bawah
               children: [
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,6 +235,8 @@ class _DashboardContentState extends State<DashboardContent> {
                 ),
               ],
             ),
+            // --- END HEADER ---
+
             const SizedBox(height: 25),
             
             // TABEL USER
@@ -249,7 +255,6 @@ class _DashboardContentState extends State<DashboardContent> {
                         DataColumn(label: Text("Actions", style: TextStyle(fontWeight: FontWeight.bold))),
                       ],
                       rows: _users.map((user) {
-                        // Ambil role pertama untuk ditampilkan di tabel
                         String roleDisplay = "-";
                         if (user['roles'] != null && (user['roles'] as List).isNotEmpty) {
                            var r = user['roles'][0];
@@ -284,12 +289,10 @@ class _DashboardContentState extends State<DashboardContent> {
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
-                                tooltip: "Edit User",
                                 onPressed: () => _showFormDialog(item: user),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                                tooltip: "Delete User",
                                 onPressed: () => _deleteItem(user['id']),
                               ),
                             ],
@@ -305,7 +308,6 @@ class _DashboardContentState extends State<DashboardContent> {
     );
   }
 
-  // Helper untuk warna badge role biar cantik
   Color _getRoleColor(String role) {
     if (role.contains("SUPER")) return Colors.red;
     if (role.contains("OPERASIONAL")) return Colors.blue;

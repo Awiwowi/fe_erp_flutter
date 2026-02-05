@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Wajib Import ini
 
 class AuthService {
-  // GANTI URL INI DENGAN NGROK TERBARU KAMU
+//URL BASE API
   static const String baseUrl = 'https://unplaying-hedwig-beautiful.ngrok-free.dev/api/v1';
   
-  // Variabel untuk menyimpan token sementara (di memori)
   static String? token; 
 
   Future<bool> login(String email, String password) async {
@@ -21,11 +21,27 @@ class AuthService {
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
-        // SIMPAN TOKEN DARI SERVER
+        
+        // 1. Inisialisasi SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+
+        // 2. Simpan Token
         token = data['token']; 
-        print("Token disimpan: $token");
+        await prefs.setString('token', token!);
+
+        // 3. Simpan Nama User
+        String name = data['user']['name'] ?? 'User';
+        await prefs.setString('user_name', name);
+
+        // 4. Simpan Role (Ambil role pertama dari list)
+        List<dynamic> roles = data['user']['roles'] ?? [];
+        String mainRole = roles.isNotEmpty ? roles[0] : 'Staff';
+        await prefs.setString('user_role', mainRole);
+
+        print("Login Success: Token & User Data Saved.");
         return true;
       } else {
+        print("Login Failed: ${response.body}");
         return false;
       }
     } catch (e) {
@@ -33,5 +49,11 @@ class AuthService {
       return false;
     }
   }
-  // ... fungsi register biarkan saja
+
+  // Fungsi Logout 
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); 
+    token = null;
+  }
 }
