@@ -19,7 +19,8 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
   final TextEditingController _deptCtrl = TextEditingController();
   final TextEditingController _notesCtrl = TextEditingController();
   
-  String _selectedType = 'Reguler'; 
+  // PERBAIKAN 1: Default value disesuaikan dengan salah satu enum di database (raw_materials/product)
+  String _selectedType = 'raw_materials'; 
 
   @override
   void initState() {
@@ -39,8 +40,9 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
   }
 
   // --- ACTIONS: SUBMIT / APPROVE / REJECT ---
-
+  // (Bagian ini tidak berubah, disembunyikan agar ringkas)
   void _processAction(int id, String actionName, Function(int) apiCall) async {
+    // ... code existing ...
     bool confirm = await showDialog(
       context: context, 
       builder: (ctx) => AlertDialog(
@@ -77,7 +79,9 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
     _dateCtrl.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _deptCtrl.clear();
     _notesCtrl.clear();
-    _selectedType = 'Reguler';
+    
+    // PERBAIKAN 2: Reset ke value default yang valid
+    _selectedType = 'raw_materials';
 
     showDialog(
       context: context,
@@ -100,12 +104,18 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
                       },
                     ),
                     const SizedBox(height: 10),
+                    
+                    // PERBAIKAN 3: Dropdown Item disesuaikan dengan Enum Backend
                     DropdownButtonFormField<String>(
                       value: _selectedType,
                       decoration: const InputDecoration(labelText: "Tipe"),
-                      items: ['Reguler', 'Urgent', 'Project'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      items: const [
+                        DropdownMenuItem(value: 'raw_materials', child: Text('Raw Materials (Bahan Baku)')),
+                        DropdownMenuItem(value: 'product', child: Text('Product (Produk Jadi)')),
+                      ],
                       onChanged: (val) => setStateDialog(() => _selectedType = val!),
                     ),
+                    
                     const SizedBox(height: 10),
                     TextField(controller: _deptCtrl, decoration: const InputDecoration(labelText: "Departemen")),
                     const SizedBox(height: 10),
@@ -118,9 +128,11 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
                 ElevatedButton(
                   onPressed: () async {
                     final messenger = ScaffoldMessenger.of(context);
+                    
+                    // Data yang dikirim sekarang sesuai validasi Laravel: in:raw_materials,product
                     Map<String, dynamic> data = {
                       "request_date": _dateCtrl.text,
-                      "type": _selectedType,
+                      "type": _selectedType, 
                       "department": _deptCtrl.text,
                       "notes": _notesCtrl.text
                     };
@@ -150,8 +162,10 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
     );
   }
 
+  // ... sisa kode delete dan build ...
   void _delete(int id) async {
-    bool confirm = await showDialog(
+     // ... (kode sama seperti sebelumnya) ...
+     bool confirm = await showDialog(
       context: context, 
       builder: (ctx) => AlertDialog(
         title: const Text("Hapus PR"),
@@ -175,6 +189,7 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
   }
 
   Widget _buildStatusBadge(String status) {
+     // ... (kode sama seperti sebelumnya) ...
     Color color;
     switch (status.toLowerCase()) {
       case 'approved': color = Colors.green; break;
@@ -237,11 +252,16 @@ class _PurchaseRequestsPageState extends State<PurchaseRequestsPage> {
                       rows: _requests.map((item) {
                         String status = (item['status'] ?? 'draft').toLowerCase();
                         
+                        // Opsional: Format tampilan tipe agar lebih rapi (bukan raw string)
+                        String typeDisplay = item['type'] ?? '-';
+                        if(typeDisplay == 'raw_materials') typeDisplay = 'Raw Material';
+                        if(typeDisplay == 'product') typeDisplay = 'Product';
+
                         return DataRow(cells: [
                           DataCell(Text(item['kode'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold))),
                           DataCell(Text(item['request_date'] ?? '-')),
                           DataCell(Text(item['requester']?['name'] ?? '-')), 
-                          DataCell(Text(item['type'] ?? '-')),
+                          DataCell(Text(typeDisplay)), // Tampilkan tipe yang sudah diformat
                           DataCell(_buildStatusBadge(status)),
                           DataCell(
                             Row(

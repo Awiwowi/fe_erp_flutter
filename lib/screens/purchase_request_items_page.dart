@@ -224,35 +224,51 @@ class _PurchaseRequestItemsPageState extends State<PurchaseRequestItemsPage> {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Isi Quantity!"))); return;
                     }
 
-                    // Simpan ScaffoldMessenger
-                    final messenger = ScaffoldMessenger.of(context);
-
-                    // Prepare Data
-                    Map<String, dynamic> data = {
-                      "purchase_request_id": _selectedPRId, 
-                      "unit_id": selectedUnitId,
-                      "quantity": qtyCtrl.text,
-                      "notes": notesCtrl.text,
-                    };
-
-                    if (!isEdit) {
-                      if (itemType == 'material') {
-                        data["raw_material_id"] = selectedMaterialId;
-                      } else {
-                        data["product_id"] = selectedProductId;
-                      }
-                    }
-
-                    Navigator.pop(ctx);
+Navigator.pop(ctx);
                     setState(() => _isLoading = true);
-
+                    final messenger = ScaffoldMessenger.of(context);
                     bool success;
+
+                    // --- 2. LOGIKA PERBAIKAN ---
+                    
                     if (isEdit) {
-                      success = await DataService().updatePurchaseRequestItem(item['id'], data);
+                      // KASUS UPDATE: Backend hanya menerima quantity, notes, reference_no (Flat Object)
+                      // Lihat Controller: public function update(Request $request, $id)
+                      Map<String, dynamic> updateData = {
+                        "quantity": qtyCtrl.text,
+                        "notes": notesCtrl.text,
+                        // "unit_id": selectedUnitId // Backend update tidak memproses unit_id, jadi user tidak bisa ganti unit saat edit
+                      };
+                      
+                      success = await DataService().updatePurchaseRequestItem(item['id'], updateData);
+                      
                     } else {
-                      success = await DataService().addPurchaseRequestItem(data);
+                      // KASUS ADD: Backend mewajibkan struktur nested array "items"
+                      // Lihat Controller: 'items' => 'required|array|min:1'
+                      
+                      // A. Buat data item tunggal
+                      Map<String, dynamic> singleItem = {
+                        "unit_id": selectedUnitId,
+                        "quantity": qtyCtrl.text,
+                        "notes": notesCtrl.text,
+                      };
+
+                      if (itemType == 'material') {
+                        singleItem["raw_material_id"] = selectedMaterialId;
+                      } else {
+                        singleItem["product_id"] = selectedProductId;
+                      }
+
+                      // B. Bungkus dalam struktur yang diminta Laravel
+                      Map<String, dynamic> payload = {
+                        "purchase_request_id": _selectedPRId, 
+                        "items": [ singleItem ] // <-- BUNGKUS KE DALAM ARRAY
+                      };
+
+                      success = await DataService().addPurchaseRequestItem(payload);
                     }
 
+                    // --- 3. HASIL (Tetap sama) ---
                     if (!mounted) return;
                     
                     if (success) {

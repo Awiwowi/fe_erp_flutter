@@ -1118,7 +1118,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
   Future<bool> approvePurchaseOrder(int id) async {
     try {
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/purchase-orders/$id/approve'),
+        Uri.parse('${AuthService.baseUrl}/purchase-orders/$id/receive'),
         headers: _headers(),
       );
       return response.statusCode == 200;
@@ -1141,6 +1141,88 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
+// --- GOODS RECEIPTS (PENERIMAAN BARANG) ---
+
+  // Get List
+  Future<List<dynamic>> getGoodsReceipts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/goods-receipts'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        return List<dynamic>.from(jsonDecode(response.body));
+      }
+      return [];
+    } catch (e) {
+      print("Error Get GR: $e");
+      return [];
+    }
+  }
+
+  // Create GR from PO
+  Future<bool> createGoodsReceipt(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/goods-receipts'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return true;
+      } else {
+        print("Gagal Create GR: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error Create GR: $e");
+      return false;
+    }
+  }
+
+  // Update GR (Draft Only)
+  Future<bool> updateGoodsReceipt(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/goods-receipts/$id'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Update GR: $e");
+      return false;
+    }
+  }
+
+  // Post/Finalize GR (Update Stock)
+  Future<bool> postGoodsReceipt(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/goods-receipts/$id/post'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Post GR: $e");
+      return false;
+    }
+  }
+
+  // Delete GR
+  Future<bool> deleteGoodsReceipt(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/goods-receipts/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete GR: $e");
+      return false;
+    }
+  }
 
   // Helper Headers
   Map<String, String> _headers() {

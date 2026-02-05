@@ -109,6 +109,7 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(9, "Purchase Requests"),
                     _subMenuItem(13, "PR Items"),
                     _subMenuItem(14, "Purchase Orders"),
+                    _subMenuItem(17, "Goods Receipts"),
                   ],
                 ),
 

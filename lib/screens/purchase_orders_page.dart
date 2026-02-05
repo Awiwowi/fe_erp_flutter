@@ -66,7 +66,6 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                     DropdownButtonFormField<int>(
                       value: selectedSupplierId,
                       decoration: const InputDecoration(labelText: "Supplier"),
-                      // Pastikan key-nya 'nama' sesuai API
                       items: _suppliers.map((s) => DropdownMenuItem<int>(
                         value: s['id'], 
                         child: Text(s['nama'] ?? '-')
@@ -92,7 +91,6 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
                 ElevatedButton(
                   onPressed: () async {
-                    // 1. Simpan Messenger sebelum async
                     final messenger = ScaffoldMessenger.of(context);
 
                     Navigator.pop(ctx);
@@ -104,10 +102,8 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                       "notes": notesCtrl.text
                     });
 
-                    // 2. Cek mounted setelah await
                     if (!mounted) return;
 
-                    // 3. Gunakan messenger yang sudah disimpan
                     if (success) {
                       _fetchData();
                       messenger.showSnackBar(const SnackBar(content: Text("PO Updated!"), backgroundColor: Colors.green));
@@ -146,7 +142,6 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
               double? price = double.tryParse(priceCtrl.text);
               if (price == null || price < 0) return;
 
-              // 1. Simpan Messenger
               final messenger = ScaffoldMessenger.of(context);
 
               Navigator.pop(ctx);
@@ -154,10 +149,8 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
               
               bool success = await DataService().updatePOItemPrice(itemId, price);
               
-              // 2. Cek mounted
               if (!mounted) return;
 
-              // 3. Gunakan messenger
               if (success) {
                 _fetchData();
                 messenger.showSnackBar(const SnackBar(content: Text("Harga disimpan!"), backgroundColor: Colors.green));
@@ -188,7 +181,6 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
     ) ?? false;
 
     if (confirm) {
-      // 1. Simpan Messenger
       final messenger = ScaffoldMessenger.of(context);
 
       setState(() => _isLoading = true);
@@ -196,10 +188,8 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
       if (action == "Submit") success = await DataService().submitPurchaseOrder(id);
       if (action == "Receive") success = await DataService().approvePurchaseOrder(id);
 
-      // 2. Cek mounted
       if (!mounted) return;
 
-      // 3. Gunakan messenger
       if (success) {
         _fetchData();
         messenger.showSnackBar(SnackBar(content: Text("Berhasil $action"), backgroundColor: Colors.green));
@@ -260,32 +250,58 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Header Card
+                                // Header Card (Kode & Badge)
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(po['kode'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                        const SizedBox(height: 2),
-                                        Text("Ref PR: ${po['purchase_request']?['kode'] ?? '-'}", style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                                      ],
+                                    Expanded( // FIX: Bungkus Column dengan Expanded agar tidak overflow jika kode panjang
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            po['kode'] ?? '-', 
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "Ref PR: ${po['purchase_request']?['kode'] ?? '-'}", 
+                                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
                                     ),
+                                    const SizedBox(width: 8), // Spacer
                                     _buildStatusBadge(status),
                                   ],
                                 ),
                                 const Divider(),
                                 
-                                // Info Supplier & Tanggal
+                                // Info Supplier & Tanggal (FIXED for Pixel Overflow)
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    // Gunakan ['nama'] karena backend SupplierController pakai 'nama'
-                                    Text("Supplier: ${po['supplier']?['nama'] ?? 'Belum dipilih'}", style: TextStyle(fontWeight: FontWeight.bold, color: po['supplier'] == null ? Colors.red : Colors.black87)),
-                                    Text(po['order_date'] ?? '-'),
+                                    Expanded( // FIX: Bungkus Supplier dengan Expanded
+                                      child: Text(
+                                        "Supplier: ${po['supplier']?['nama'] ?? 'Belum dipilih'}", 
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold, 
+                                          color: po['supplier'] == null ? Colors.red : Colors.black87
+                                        ),
+                                        overflow: TextOverflow.ellipsis, // Potong teks jika kepanjangan
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10), // Jarak aman antara supplier dan tanggal
+                                    Text(
+                                      po['order_date'] ?? '-',
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                    ),
                                   ],
                                 ),
+
+                                // Edit Button (Hanya Draft)
                                 if (status == 'draft')
                                   Align(
                                     alignment: Alignment.centerRight,
@@ -301,19 +317,17 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                                 
                                 // List Items (Tabel Mini)
                                 ...items.map((item) {
-                                  // Mapping nama item manual
                                   String itemName = item['raw_material']?['name'] ?? item['product']?['name'] ?? 'Item #${item['id']}';
-                                  
                                   double price = double.tryParse(item['price'].toString()) ?? 0;
                                   
                                   return Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 4),
                                     child: Row(
                                       children: [
-                                        Expanded(flex: 3, child: Text("- $itemName")),
+                                        Expanded(flex: 3, child: Text("- $itemName", overflow: TextOverflow.ellipsis)),
                                         Expanded(flex: 1, child: Text("x${item['quantity']}")),
                                         Expanded(flex: 2, child: Text("Rp ${price.toStringAsFixed(0)}", textAlign: TextAlign.right)),
-                                        // Tombol Edit Harga (Hanya Draft)
+                                        
                                         if (status == 'draft')
                                           IconButton(
                                             icon: const Icon(Icons.edit_note, color: Colors.blue, size: 18),
@@ -333,7 +347,6 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                                   children: [
                                     if (status == 'draft') ...[
                                       OutlinedButton.icon(
-                                        // Hapus PO tidak butuh messenger khusus karena fetch ulang
                                         onPressed: () => DataService().deletePurchaseOrder(po['id']).then((_) => _fetchData()), 
                                         icon: const Icon(Icons.delete, color: Colors.red, size: 16),
                                         label: const Text("Hapus", style: TextStyle(color: Colors.red)),
