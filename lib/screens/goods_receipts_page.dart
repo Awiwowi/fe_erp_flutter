@@ -301,20 +301,26 @@ class _GoodsReceiptsPageState extends State<GoodsReceiptsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Penerimaan Barang", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text("Goods Receipt dari Supplier", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Penerimaan Barang", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text("Goods Receipt dari Supplier", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 10),
                 ElevatedButton.icon(
                   onPressed: _showCreateDialog,
                   icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                  label: const Text("Buat Penerimaan", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  label: const Text("Buat Penerimaan", style: TextStyle(color: Colors.white, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
                 )
               ],
             ),
@@ -362,32 +368,53 @@ class _GoodsReceiptsPageState extends State<GoodsReceiptsPage> {
                                 ),
                                 const Divider(),
                                 
-                                // Info Supplier & Gudang
-                                Row(
+                                // Info Supplier & Gudang - Layout diperbaiki
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text("Supplier:", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                          Text(supplier['nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text("Gudang:", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                          Text(gr['warehouse']?['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                                        ],
-                                      ),
-                                    ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text("Tanggal:", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                        Text(gr['receipt_date'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text("Supplier:", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                supplier['nama'] ?? '-', 
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text("Gudang:", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                gr['warehouse']?['name'] ?? '-', 
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        const Text("Tanggal: ", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                        Text(gr['receipt_date'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                       ],
                                     ),
                                   ],

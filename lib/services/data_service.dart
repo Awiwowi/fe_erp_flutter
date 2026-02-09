@@ -1224,6 +1224,85 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
+// --- PURCHASE RETURNS (RETUR PEMBELIAN) ---
+
+  Future<List<dynamic>> getPurchaseReturns() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/purchase-returns'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json is List) return json;
+        return [];
+      }
+      return [];
+    } catch (e) {
+      print("Error Get PR: $e");
+      return [];
+    }
+  }
+
+  // Ambil PO yang boleh diretur (Status: received / closed)
+  Future<List<dynamic>> getReturnablePOs() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/purchase-returns-helpers/returnable-pos'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return [];
+    } catch (e) {
+      print("Error Get Returnable PO: $e");
+      return [];
+    }
+  }
+
+  Future<bool> createPurchaseReturn(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/purchase-returns'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      if (response.statusCode != 201) print("Gagal Create Return: ${response.body}");
+      return response.statusCode == 201;
+    } catch (e) {
+      print("Error Create Return: $e");
+      return false;
+    }
+  }
+
+  // Generic Action: submit, approve, reject, realize, complete
+  Future<bool> actionPurchaseReturn(int id, String action) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/purchase-returns/$id/$action'),
+        headers: _headers(),
+      );
+      if (response.statusCode != 200) print("Gagal $action Return: ${response.body}");
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error $action Return: $e");
+      return false;
+    }
+  }
+
+  Future<bool> deletePurchaseReturn(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/purchase-returns/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete Return: $e");
+      return false;
+    }
+  }
+
+
   // Helper Headers
   Map<String, String> _headers() {
     return {
