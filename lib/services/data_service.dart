@@ -332,6 +332,72 @@ class DataService {
     }
   }
 
+// --- CHART OF ACCOUNTS (COA) ---
+
+  Future<List<dynamic>> getChartOfAccounts() async {
+    try {
+      // Endpoint: GET /api/chart-of-accounts
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/chart-of-accounts'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        // Controller mengembalikan List langsung [...]
+        return jsonDecode(response.body); 
+      }
+      return [];
+    } catch (e) {
+      print("Error Get COA: $e");
+      return [];
+    }
+  }
+
+  Future<bool> createChartOfAccount(Map<String, dynamic> data) async {
+    try {
+      // Endpoint: POST /api/chart-of-accounts
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/chart-of-accounts'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      // Expected Status: 201 Created
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create COA: $e");
+      return false;
+    }
+  }
+
+  Future<bool> updateChartOfAccount(int id, Map<String, dynamic> data) async {
+    try {
+      // Endpoint: PUT /api/chart-of-accounts/{id}
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/chart-of-accounts/$id'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Update COA: $e");
+      return false;
+    }
+  }
+
+  Future<bool> deleteChartOfAccount(int id) async {
+    try {
+      // Endpoint: DELETE /api/chart-of-accounts/{id}
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/chart-of-accounts/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete COA: $e");
+      return false;
+    }
+  }
+
 // --- STOCK REQUESTS ---
 
   Future<List<dynamic>> getStockRequests() async {
@@ -676,6 +742,35 @@ class DataService {
     }
   }
 
+// --- STOCK SUMMARY (PRODUCT TRACKING) ---
+
+  Future<List<dynamic>> getProductStockSummary() async {
+    try {
+      // Endpoint ini sesuai dengan routes/api.php: Route::get('/stock-summary', ...)
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/stock-summary'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        
+        // Handle jika response dibungkus { success: true, data: [...] }
+        if (json is Map && json.containsKey('data')) {
+          return List<dynamic>.from(json['data']);
+        } 
+        // Handle jika response langsung list [...]
+        else if (json is List) {
+          return json;
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Stock Summary: $e");
+      return [];
+    }
+  }
+
 // --- RAW MATERIALS (BAHAN BAKU) ---
 
   Future<List<dynamic>> getRawMaterials() async {
@@ -880,6 +975,71 @@ class DataService {
     } catch (e) {
       print("Error Delete RM Out: $e");
       return false;
+    }
+  }
+
+// --- RAW MATERIAL STOCK ADJUSTMENT ---
+
+  Future<List<dynamic>> getRawMaterialStockAdjustments() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/raw-material-stock-adjustments'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body); // Mengembalikan List [...]
+      }
+      return [];
+    } catch (e) {
+      print("Error Get RM Adjustment: $e");
+      return [];
+    }
+  }
+
+  Future<bool> createRawMaterialStockAdjustment(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/raw-material-stock-adjustments'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return true;
+      } else {
+        print("Fail Create RM Adjustment: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error Create RM Adjustment: $e");
+      return false;
+    }
+  }
+
+// --- STOCK MOVEMENTS (HISTORY) ---
+
+  Future<List<dynamic>> getStockMovements() async {
+    try {
+      // Pastikan endpoint ini sesuai dengan route Anda (misal: Route::get('stock-movements', ...))
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/stock-movements'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        
+        // Controller return: { "success": true, "data": [...] }
+        if (json is Map && json.containsKey('data')) {
+          return List<dynamic>.from(json['data']);
+        } else if (json is List) {
+          return List<dynamic>.from(json);
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Stock Movements: $e");
+      return [];
     }
   }
 

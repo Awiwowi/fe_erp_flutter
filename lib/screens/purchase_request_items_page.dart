@@ -224,7 +224,7 @@ class _PurchaseRequestItemsPageState extends State<PurchaseRequestItemsPage> {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Isi Quantity!"))); return;
                     }
 
-Navigator.pop(ctx);
+                  Navigator.pop(ctx);
                     setState(() => _isLoading = true);
                     final messenger = ScaffoldMessenger.of(context);
                     bool success;

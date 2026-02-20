@@ -79,6 +79,7 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(2, "Units"),
                     _subMenuItem(3, "Warehouses"),
                     _subMenuItem(4, "Suppliers"),
+                    _subMenuItem(20, "COA"),
                   ],
                 ),
 
@@ -94,9 +95,12 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(8, "Stock Awal"),
                     _subMenuItem(15, "Stock Transfer"),
                     _subMenuItem(16, "Stock Adjustment"),
+                    _subMenuItem(19, "Product Stock"), 
                     _subMenuItem(10, "Raw Materials"),
                     _subMenuItem(11, "RM Stock In"),
                     _subMenuItem(12, "RM Stock Out"),
+                    _subMenuItem(21, "Raw Material Stock"),
+                    _subMenuItem(22, "Stock Movements"),
                   ],
                 ),
 
