@@ -15,6 +15,8 @@ class _SidebarState extends State<Sidebar> {
   bool _isDataMasterExpanded = false;
   bool _isPersediaanExpanded = false;
   bool _isPembelianExpanded = false;
+  bool _isPenjualanExpanded = false;
+  bool _isProduksiExpanded = false;
 
   @override
   void initState() {
@@ -117,7 +119,30 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(14, "Purchase Orders"),
                     _subMenuItem(17, "Goods Receipts"),
                     _subMenuItem(18, "Purchase Returns"),
-                    _subMenuItem(25, "Tanda Terima Faktur")
+                    _subMenuItem(25, "Tanda Terima Faktur"),
+                    _subMenuItem(26, "Laporan Supplier"),
+                  ],
+                ),
+
+                _buildExpandableMenu(
+                  title: "Penjualan",
+                  icon: Icons.shopping_basket_outlined,
+                  isOpen: _isPenjualanExpanded,
+                  onTap: () => setState(() => _isPenjualanExpanded = !_isPenjualanExpanded),
+                  children: [
+                    _subMenuItem(30, "Surat Jalan (DO)"),
+                  ],
+                ),
+
+                _buildExpandableMenu(
+                  title: "Produksi",
+                  icon: Icons.factory_outlined,
+                  isOpen: _isProduksiExpanded,
+                  onTap: () => setState(() => _isProduksiExpanded = !_isProduksiExpanded),
+                  children: [
+                    _subMenuItem(27, "Bill of Materials (BOM)"),
+                    _subMenuItem(28, "Product Order"),
+                    _subMenuItem(29, "Eksekusi & HPP")
                   ],
                 ),
 

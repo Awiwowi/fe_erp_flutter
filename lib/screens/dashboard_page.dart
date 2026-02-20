@@ -1,9 +1,11 @@
+import 'package:fe_erp_flutter/screens/bom_page.dart';
 import 'package:fe_erp_flutter/screens/chart_of_accounts_page.dart';
 import 'package:fe_erp_flutter/screens/goods_movement_report_page.dart';
 import 'package:fe_erp_flutter/screens/goods_receipts_page.dart';
 import 'package:fe_erp_flutter/screens/inventory_report_page.dart';
 import 'package:fe_erp_flutter/screens/invoice_receipts_page.dart';
 import 'package:fe_erp_flutter/screens/product_stock_page.dart';
+import 'package:fe_erp_flutter/screens/production_executions_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_orders_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_request_items_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_requests_page.dart';
@@ -17,6 +19,7 @@ import 'package:fe_erp_flutter/screens/stock_initial_page.dart';
 import 'package:fe_erp_flutter/screens/stock_movements_page.dart';
 import 'package:fe_erp_flutter/screens/stock_outs_page.dart';
 import 'package:fe_erp_flutter/screens/stock_transfer_page.dart';
+import 'package:fe_erp_flutter/screens/supplier_purchase_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Wajib Import
 import '../widgets/sidebar.dart';
@@ -186,6 +189,10 @@ class _DashboardPageState extends State<DashboardPage> {
       case 23: return const InventoryReportPage();
       case 24: return const GoodsMovementReportPage();
       case 25: return const InvoiceReceiptsPage();
+      case 26: return const SupplierPurchaseReportPage();
+      case 27: return const BOMPage();
+      case 28: return const ProductStockPage();
+      case 29: return const ProductionExecutionsPage();
       case 98: return const Center(child: Text("Settings Page"));
       default: return const Center(child: Text("Page Not Found"));
     }
