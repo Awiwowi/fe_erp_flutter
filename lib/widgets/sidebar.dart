@@ -101,6 +101,8 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(12, "RM Stock Out"),
                     _subMenuItem(21, "Raw Material Stock"),
                     _subMenuItem(22, "Stock Movements"),
+                    _subMenuItem(23, "Kartu Persediaan"),
+                    _subMenuItem(24, "Laporan"),
                   ],
                 ),
 
@@ -115,6 +117,7 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(14, "Purchase Orders"),
                     _subMenuItem(17, "Goods Receipts"),
                     _subMenuItem(18, "Purchase Returns"),
+                    _subMenuItem(25, "Tanda Terima Faktur")
                   ],
                 ),
 

@@ -1020,19 +1020,21 @@ class DataService {
 
   Future<List<dynamic>> getStockMovements() async {
     try {
-      // Pastikan endpoint ini sesuai dengan route Anda (misal: Route::get('stock-movements', ...))
+      // PERBAIKAN: Endpoint yang benar sesuai api.php adalah '/stock-tracking'
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/stock-movements'),
+        Uri.parse('${AuthService.baseUrl}/stock-tracking'), 
         headers: _headers(),
       );
 
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
         
-        // Controller return: { "success": true, "data": [...] }
+        // Backend mengembalikan format: { "success": true, "data": [...] }
         if (json is Map && json.containsKey('data')) {
           return List<dynamic>.from(json['data']);
-        } else if (json is List) {
+        } 
+        // Jaga-jaga jika backend mengembalikan list langsung
+        else if (json is List) {
           return List<dynamic>.from(json);
         }
       }
@@ -1040,6 +1042,111 @@ class DataService {
     } catch (e) {
       print("Error Get Stock Movements: $e");
       return [];
+    }
+  }
+
+// --- Laporan Kartu Persediaan ---
+
+  Future<List<dynamic>> getInventoryProducts({String? startDate, String? endDate, String? search}) async {
+    try {
+      String queryParams = '?';
+      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (search != null && search.isNotEmpty) queryParams += 'search=$search';
+
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/inventory/products$queryParams'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['status'] == 'success' && json['data'] != null) {
+          return List<dynamic>.from(json['data']);
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Inventory Products: $e");
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getInventoryRawMaterials({String? startDate, String? endDate, String? search}) async {
+    try {
+      String queryParams = '?';
+      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (search != null && search.isNotEmpty) queryParams += 'search=$search';
+
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/inventory/raw-materials$queryParams'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['status'] == 'success' && json['data'] != null) {
+          return List<dynamic>.from(json['data']);
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Inventory Raw Materials: $e");
+      return [];
+    }
+  }
+
+ // --- REPORTS (LAPORAN) ---
+ // --- LAPORAN BARANG MASUK ---
+  Future<Map<String, dynamic>?> getIncomingGoodsReport({String? startDate, String? endDate, String? search}) async {
+    try {
+      String queryParams = '?';
+      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (search != null && search.isNotEmpty) queryParams += 'search=$search';
+
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/inventory/incoming-report$queryParams'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['status'] == 'success') {
+          return json; // Return seluruh JSON karena kita butuh 'data' (Map) dan 'meta' (Grand Total)
+        }
+      }
+      return null;
+    } catch (e) {
+      print("Error Get Incoming Report: $e");
+      return null;
+    }
+  }
+
+  // --- LAPORAN BARANG KELUAR ---
+  Future<Map<String, dynamic>?> getOutgoingGoodsReport({String? startDate, String? endDate, String? search}) async {
+    try {
+      String queryParams = '?';
+      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (search != null && search.isNotEmpty) queryParams += 'search=$search';
+
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/inventory/outgoing-report$queryParams'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['status'] == 'success') {
+          return json;
+        }
+      }
+      return null;
+    } catch (e) {
+      print("Error Get Outgoing Report: $e");
+      return null;
     }
   }
 
@@ -1458,6 +1565,68 @@ Future<List<dynamic>> getPurchaseRequests() async {
       return response.statusCode == 200;
     } catch (e) {
       print("Error Delete Return: $e");
+      return false;
+    }
+  }
+
+// --- INVOICE RECEIPTS (TANDA TERIMA FAKTUR) ---
+
+  Future<List<dynamic>> getInvoiceReceipts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        // Menangani jika response berupa List langsung atau dibungkus 'data'
+        if (json is List) return json;
+        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Invoice Receipts: $e");
+      return [];
+    }
+  }
+
+  Future<bool> createInvoiceReceipt(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create Invoice Receipt: $e");
+      return false;
+    }
+  }
+
+  // Fungsi dinamis untuk Submit, Approve, atau Reject
+  Future<bool> actionInvoiceReceipt(int id, String action) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts/$id/$action'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Action Invoice Receipt ($action): $e");
+      return false;
+    }
+  }
+
+  Future<bool> deleteInvoiceReceipt(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete Invoice Receipt: $e");
       return false;
     }
   }

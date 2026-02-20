@@ -1,5 +1,8 @@
 import 'package:fe_erp_flutter/screens/chart_of_accounts_page.dart';
+import 'package:fe_erp_flutter/screens/goods_movement_report_page.dart';
 import 'package:fe_erp_flutter/screens/goods_receipts_page.dart';
+import 'package:fe_erp_flutter/screens/inventory_report_page.dart';
+import 'package:fe_erp_flutter/screens/invoice_receipts_page.dart';
 import 'package:fe_erp_flutter/screens/product_stock_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_orders_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_request_items_page.dart';
@@ -180,6 +183,9 @@ class _DashboardPageState extends State<DashboardPage> {
       case 20: return const ChartOfAccountsPage();
       case 21: return const RawMaterialStockAdjustmentPage();
       case 22: return const StockMovementsPage();
+      case 23: return const InventoryReportPage();
+      case 24: return const GoodsMovementReportPage();
+      case 25: return const InvoiceReceiptsPage();
       case 98: return const Center(child: Text("Settings Page"));
       default: return const Center(child: Text("Page Not Found"));
     }
