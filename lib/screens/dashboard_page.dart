@@ -1,11 +1,13 @@
 import 'package:fe_erp_flutter/screens/bom_page.dart';
 import 'package:fe_erp_flutter/screens/chart_of_accounts_page.dart';
+import 'package:fe_erp_flutter/screens/customers_page.dart';
 import 'package:fe_erp_flutter/screens/goods_movement_report_page.dart';
 import 'package:fe_erp_flutter/screens/goods_receipts_page.dart';
 import 'package:fe_erp_flutter/screens/inventory_report_page.dart';
 import 'package:fe_erp_flutter/screens/invoice_receipts_page.dart';
 import 'package:fe_erp_flutter/screens/product_stock_page.dart';
 import 'package:fe_erp_flutter/screens/production_executions_page.dart';
+import 'package:fe_erp_flutter/screens/production_orders_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_orders_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_request_items_page.dart';
 import 'package:fe_erp_flutter/screens/purchase_requests_page.dart';
@@ -14,6 +16,8 @@ import 'package:fe_erp_flutter/screens/raw_material_stock_adjustment_page.dart';
 import 'package:fe_erp_flutter/screens/raw_material_stock_in_page.dart';
 import 'package:fe_erp_flutter/screens/raw_material_stock_out_page.dart';
 import 'package:fe_erp_flutter/screens/raw_materials_page.dart';
+import 'package:fe_erp_flutter/screens/sales_orders_page.dart';
+import 'package:fe_erp_flutter/screens/sales_quotations_page.dart';
 import 'package:fe_erp_flutter/screens/stock_adjustment_page.dart';
 import 'package:fe_erp_flutter/screens/stock_initial_page.dart';
 import 'package:fe_erp_flutter/screens/stock_movements_page.dart';
@@ -30,9 +34,9 @@ import 'login_page.dart';
 
 // Import Halaman-Halaman
 // (Pastikan nama file sesuai dengan yang ada di folder screens Anda)
-import 'dashboard_content.dart'; 
-import 'products_page.dart'; 
-import 'units_page.dart'; 
+import 'dashboard_content.dart';
+import 'products_page.dart';
+import 'units_page.dart';
 import 'warehouses_page.dart';
 import 'suppliers_page.dart';
 import 'stock_requests_page.dart';
@@ -47,8 +51,8 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  
-  int _selectedIndex = 0; 
+
+  int _selectedIndex = 0;
 
   // Variabel Data User
   String _userName = "User";
@@ -63,13 +67,13 @@ class _DashboardPageState extends State<DashboardPage> {
   // Fungsi Ambil Data User dari SharedPreferences
   void _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Cek mounted agar tidak error jika pindah halaman cepat
     if (!mounted) return;
 
     setState(() {
       _userName = prefs.getString('user_name') ?? "User";
-      
+
       String rawRole = prefs.getString('user_role') ?? "Staff";
       _userRole = rawRole.replaceAll('-', ' ').toUpperCase();
     });
@@ -83,17 +87,17 @@ class _DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
-      
+
       // DRAWER (Hanya muncul di HP/Tablet Kecil)
-      drawer: !isDesktop 
-        ? Drawer(
-            width: 280,
-            child: Sidebar(
-              selectedIndex: _selectedIndex,
-              onMenuClick: _handleMenuClick,
-            ),
-          ) 
-        : null,
+      drawer: !isDesktop
+          ? Drawer(
+              width: 280,
+              child: Sidebar(
+                selectedIndex: _selectedIndex,
+                onMenuClick: _handleMenuClick,
+              ),
+            )
+          : null,
 
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,12 +122,12 @@ class _DashboardPageState extends State<DashboardPage> {
                     if (!isDesktop) _scaffoldKey.currentState?.openDrawer();
                   },
                 ),
-                
+
                 // ISI HALAMAN (Ganti-ganti sesuai menu)
                 Expanded(
                   child: Container(
                     // Padding agar konten tidak mepet pinggir
-                    padding: const EdgeInsets.all(20), 
+                    padding: const EdgeInsets.all(20),
                     child: _buildContent(_selectedIndex),
                   ),
                 ),
@@ -140,7 +144,7 @@ class _DashboardPageState extends State<DashboardPage> {
     // LOGOUT (Index 99)
     if (index == 99) {
       await AuthService().logout(); // Panggil fungsi logout dari service
-      
+
       if (!mounted) return;
       // Kembali ke Login Page & Hapus history route sebelumnya
       Navigator.pushAndRemoveUntil(
@@ -150,10 +154,10 @@ class _DashboardPageState extends State<DashboardPage> {
       );
       return;
     }
-    
+
     // GANTI HALAMAN
     setState(() => _selectedIndex = index);
-    
+
     // Tutup Drawer jika sedang terbuka (User HP)
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       Navigator.pop(context);
@@ -163,38 +167,76 @@ class _DashboardPageState extends State<DashboardPage> {
   // Router Halaman
   Widget _buildContent(int index) {
     switch (index) {
-      case 0: return const DashboardContent(); 
-      case 1: return const ProductsPage();    
-      case 2: return const UnitsPage();        
-      case 3: return const WarehousesPage();   
-      case 4: return const SuppliersPage();    
-      case 5: return const StockRequestsPage(); 
-      case 6: return const StockApprovalsPage(); 
-      case 7: return const StockOutsPage();
-      case 8: return const InitialStocksPage();
-      case 9: return const PurchaseRequestsPage();
-      case 10: return const RawMaterialsPage();
-      case 11: return const RawMaterialStockInPage();
-      case 12: return const RawMaterialStockOutPage();
-      case 13: return const PurchaseRequestItemsPage();
-      case 14: return const PurchaseOrdersPage();
-      case 15: return const StockTransferPage();
-      case 16: return const StockAdjustmentPage();
-      case 17: return const GoodsReceiptsPage();
-      case 18: return const PurchaseReturnsPage();
-      case 19: return const ProductStockPage();
-      case 20: return const ChartOfAccountsPage();
-      case 21: return const RawMaterialStockAdjustmentPage();
-      case 22: return const StockMovementsPage();
-      case 23: return const InventoryReportPage();
-      case 24: return const GoodsMovementReportPage();
-      case 25: return const InvoiceReceiptsPage();
-      case 26: return const SupplierPurchaseReportPage();
-      case 27: return const BOMPage();
-      case 28: return const ProductStockPage();
-      case 29: return const ProductionExecutionsPage();
-      case 98: return const Center(child: Text("Settings Page"));
-      default: return const Center(child: Text("Page Not Found"));
+      case 0:
+        return const DashboardContent();
+      case 1:
+        return const ProductsPage();
+      case 2:
+        return const UnitsPage();
+      case 31:
+        return const CustomersPage();
+      case 3:
+        return const WarehousesPage();
+      case 4:
+        return const SuppliersPage();
+      case 5:
+        return const StockRequestsPage();
+      case 6:
+        return const StockApprovalsPage();
+      case 7:
+        return const StockOutsPage();
+      case 8:
+        return const InitialStocksPage();
+      case 9:
+        return const PurchaseRequestsPage();
+      case 10:
+        return const RawMaterialsPage();
+      case 11:
+        return const RawMaterialStockInPage();
+      case 12:
+        return const RawMaterialStockOutPage();
+      case 13:
+        return const PurchaseRequestItemsPage();
+      case 14:
+        return const PurchaseOrdersPage();
+      case 15:
+        return const StockTransferPage();
+      case 16:
+        return const StockAdjustmentPage();
+      case 17:
+        return const GoodsReceiptsPage();
+      case 18:
+        return const PurchaseReturnsPage();
+      case 19:
+        return const ProductStockPage();
+      case 20:
+        return const ChartOfAccountsPage();
+      case 21:
+        return const RawMaterialStockAdjustmentPage();
+      case 22:
+        return const StockMovementsPage();
+      case 23:
+        return const InventoryReportPage();
+      case 24:
+        return const GoodsMovementReportPage();
+      case 25:
+        return const InvoiceReceiptsPage();
+      case 26:
+        return const SupplierPurchaseReportPage();
+      case 27:
+        return const BOMPage();
+      case 28:
+        return const ProductionOrdersPage();
+      case 29:
+        return const ProductionExecutionsPage();
+      case 30:
+        return const SalesQuotationsPage();
+      case 32:
+        return const SalesOrdersPage();
+      case 98:
+        return const Center(child: Text("Settings Page"));
+      default:
+        return const Center(child: Text("Page Not Found"));
     }
   }
 }

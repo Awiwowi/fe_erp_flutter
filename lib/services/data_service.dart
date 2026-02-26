@@ -3,8 +3,82 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class DataService {
-  // --- PRODUCTS ---
+  // User Management
+  // Get all users
+  Future<List<dynamic>> getUsers() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/users'),
+        headers: _headers(),
+      );
 
+      print("Status User: ${response.statusCode}");
+      print("Body User: ${response.body}");
+
+      if (response.statusCode == 200) {
+        var jsonResponse = jsonDecode(response.body);
+        if (jsonResponse is List) {
+          return jsonResponse;
+        } else if (jsonResponse is Map && jsonResponse.containsKey('data')) {
+          return jsonResponse['data'];
+        } else {
+          return [];
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Users: $e");
+      return [];
+    }
+  }
+
+  //Create User
+  Future<bool> createUser(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/users'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      //201 created
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create User: $e");
+      return false;
+    }
+  }
+
+  // Update User
+  Future<bool> updateUser(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/users/$id'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Update User: $e");
+      return false;
+    }
+  }
+
+  // Delete User
+  Future<bool> deleteUser(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/users/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print("Error Delete User: $e");
+      return false;
+    }
+  }
+
+  // Data Master
+  // --- PRODUCTS ---
   // GET (Read)
   Future<List<dynamic>> getProducts() async {
     try {
@@ -127,7 +201,7 @@ class DataService {
     }
   }
 
-// --- WAREHOUSES ---
+  // --- WAREHOUSES ---
 
   Future<List<dynamic>> getWarehouses() async {
     try {
@@ -137,18 +211,19 @@ class DataService {
       );
 
       if (response.statusCode != 200) {
-        print("Gagal Get Warehouses: ${response.statusCode} - ${response.body}");
+        print(
+          "Gagal Get Warehouses: ${response.statusCode} - ${response.body}",
+        );
         return [];
       }
 
       var json = jsonDecode(response.body);
-      
+
       if (json['data'] != null) {
         return List<dynamic>.from(json['data']);
       }
-      
-      return [];
 
+      return [];
     } catch (e) {
       print("Error Get Warehouses: $e");
       return [];
@@ -196,75 +271,63 @@ class DataService {
     }
   }
 
-// User Management
-// Get all users
-  Future<List<dynamic>> getUsers() async {
+  // Customers
+  Future<List<dynamic>> getCustomers() async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/users'),
+        Uri.parse('${AuthService.baseUrl}/customers'),
         headers: _headers(),
       );
-
-      print("Status User: ${response.statusCode}");
-      print("Body User: ${response.body}");
-
       if (response.statusCode == 200) {
-        var jsonResponse = jsonDecode(response.body);
-        if (jsonResponse is List){
-        return jsonResponse;
-      } else if (jsonResponse is Map && jsonResponse.containsKey('data')) {
-        return jsonResponse['data'];
-      } else {
-        return [];}
+        var json = jsonDecode(response.body);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
+        return List<dynamic>.from(json);
       }
       return [];
     } catch (e) {
-      print("Error Get Users: $e");
+      print("Error Get Customers: $e");
       return [];
     }
   }
 
-  //Create User
-  Future<bool> createUser(Map<String, dynamic> data) async {
+  Future<bool> createCustomer(Map<String, dynamic> data) async {
     try {
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/users'),
+        Uri.parse('${AuthService.baseUrl}/customers'),
         headers: _headers(),
         body: jsonEncode(data),
       );
-      //201 created
       return response.statusCode == 201 || response.statusCode == 200;
     } catch (e) {
-      print("Error Create User: $e");
+      print("Error Create Customer: $e");
       return false;
     }
   }
 
-// Update User
-  Future<bool> updateUser(int id, Map<String, dynamic> data) async {
+  Future<bool> updateCustomer(int id, Map<String, dynamic> data) async {
     try {
       final response = await http.put(
-        Uri.parse('${AuthService.baseUrl}/users/$id'),
+        Uri.parse('${AuthService.baseUrl}/customers/$id'),
         headers: _headers(),
         body: jsonEncode(data),
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error Update User: $e");
+      print("Error Update Customer: $e");
       return false;
     }
   }
 
-  // Delete User
-  Future<bool> deleteUser(int id) async {
+  Future<bool> deleteCustomer(int id) async {
     try {
       final response = await http.delete(
-        Uri.parse('${AuthService.baseUrl}/users/$id'),
+        Uri.parse('${AuthService.baseUrl}/customers/$id'),
         headers: _headers(),
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      return response.statusCode == 200;
     } catch (e) {
-      print("Error Delete User: $e");
+      print("Error Delete Customer: $e");
       return false;
     }
   }
@@ -332,7 +395,7 @@ class DataService {
     }
   }
 
-// --- CHART OF ACCOUNTS (COA) ---
+  // --- CHART OF ACCOUNTS (COA) ---
 
   Future<List<dynamic>> getChartOfAccounts() async {
     try {
@@ -344,7 +407,7 @@ class DataService {
 
       if (response.statusCode == 200) {
         // Controller mengembalikan List langsung [...]
-        return jsonDecode(response.body); 
+        return jsonDecode(response.body);
       }
       return [];
     } catch (e) {
@@ -398,7 +461,7 @@ class DataService {
     }
   }
 
-// --- STOCK REQUESTS ---
+  // --- STOCK REQUESTS ---
 
   Future<List<dynamic>> getStockRequests() async {
     try {
@@ -467,7 +530,9 @@ class DataService {
   Future<bool> approveStockRequest(int id) async {
     try {
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/stock-requests-approval/$id/approve'), // Asumsi route Laravel: POST /stock-requests/{id}/approve
+        Uri.parse(
+          '${AuthService.baseUrl}/stock-requests-approval/$id/approve',
+        ), // Asumsi route Laravel: POST /stock-requests/{id}/approve
         headers: _headers(),
       );
       return response.statusCode == 200;
@@ -481,7 +546,9 @@ class DataService {
   Future<bool> rejectStockRequest(int id) async {
     try {
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/stock-requests-approval/$id/reject'), // Asumsi route Laravel: POST /stock-requests/{id}/reject
+        Uri.parse(
+          '${AuthService.baseUrl}/stock-requests-approval/$id/reject',
+        ), // Asumsi route Laravel: POST /stock-requests/{id}/reject
         headers: _headers(),
       );
       return response.statusCode == 200;
@@ -491,7 +558,7 @@ class DataService {
     }
   }
 
-// AMBIL LIST WAREHOUSE (GUDANG)
+  // AMBIL LIST WAREHOUSE (GUDANG)
   // 1. Ambil Stock Request yang SUDAH APPROVED saja
   Future<List<dynamic>> getApprovedStockRequests() async {
     try {
@@ -502,7 +569,7 @@ class DataService {
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
         List<dynamic> allData = json['data'] ?? [];
-        
+
         // FILTER HANYA YANG STATUS == 'approved'
         return allData.where((item) {
           String status = (item['status'] ?? '').toString().toLowerCase();
@@ -517,7 +584,12 @@ class DataService {
   }
 
   // 2. Submit Stock Out
-  Future<bool> createStockOut(int stockRequestId, int warehouseId, String date, String notes) async {
+  Future<bool> createStockOut(
+    int stockRequestId,
+    int warehouseId,
+    String date,
+    String notes,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('${AuthService.baseUrl}/stock-outs'),
@@ -542,9 +614,12 @@ class DataService {
     }
   }
 
-// --- STOCK INITIAL (STOK AWAL) ---
+  // --- STOCK INITIAL (STOK AWAL) ---
 
-  Future<bool> createInitialStocks(int warehouseId, List<Map<String, dynamic>> items) async {
+  Future<bool> createInitialStocks(
+    int warehouseId,
+    List<Map<String, dynamic>> items,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('${AuthService.baseUrl}/initial-stocks'),
@@ -570,7 +645,9 @@ class DataService {
   Future<List<dynamic>> getInitialStocks() async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/initial-stocks'), // Sesuaikan route di api.php
+        Uri.parse(
+          '${AuthService.baseUrl}/initial-stocks',
+        ), // Sesuaikan route di api.php
         headers: _headers(),
       );
       if (response.statusCode == 200) {
@@ -597,7 +674,7 @@ class DataService {
     }
   }
 
-// --- STOCK TRANSFER ---
+  // --- STOCK TRANSFER ---
 
   Future<List<dynamic>> getStockTransfers() async {
     try {
@@ -609,7 +686,8 @@ class DataService {
         // Handle jika backend return {data: []} atau [] langsung
         var json = jsonDecode(response.body);
         if (json is List) return json;
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
         return [];
       }
       return [];
@@ -681,7 +759,7 @@ class DataService {
     }
   }
 
-// --- STOCK ADJUSTMENT (PENYESUAIAN STOK) ---
+  // --- STOCK ADJUSTMENT (PENYESUAIAN STOK) ---
 
   Future<List<dynamic>> getStockAdjustments() async {
     try {
@@ -691,7 +769,8 @@ class DataService {
       );
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
         return [];
       }
       return [];
@@ -742,7 +821,7 @@ class DataService {
     }
   }
 
-// --- STOCK SUMMARY (PRODUCT TRACKING) ---
+  // --- STOCK SUMMARY (PRODUCT TRACKING) ---
 
   Future<List<dynamic>> getProductStockSummary() async {
     try {
@@ -754,11 +833,11 @@ class DataService {
 
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
-        
+
         // Handle jika response dibungkus { success: true, data: [...] }
         if (json is Map && json.containsKey('data')) {
           return List<dynamic>.from(json['data']);
-        } 
+        }
         // Handle jika response langsung list [...]
         else if (json is List) {
           return json;
@@ -771,7 +850,7 @@ class DataService {
     }
   }
 
-// --- RAW MATERIALS (BAHAN BAKU) ---
+  // --- RAW MATERIALS (BAHAN BAKU) ---
 
   Future<List<dynamic>> getRawMaterials() async {
     try {
@@ -834,7 +913,7 @@ class DataService {
     }
   }
 
-// --- RAW MATERIAL STOCK IN (BARANG MASUK) ---
+  // --- RAW MATERIAL STOCK IN (BARANG MASUK) ---
 
   Future<List<dynamic>> getRawMaterialStockIn() async {
     try {
@@ -864,7 +943,7 @@ class DataService {
         headers: _headers(),
         body: jsonEncode(data),
       );
-      
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         return true;
       } else {
@@ -904,7 +983,7 @@ class DataService {
     }
   }
 
-// --- RAW MATERIAL STOCK OUT (PENGELUARAN BAHAN BAKU) ---
+  // --- RAW MATERIAL STOCK OUT (PENGELUARAN BAHAN BAKU) ---
 
   Future<List<dynamic>> getRawMaterialStockOut() async {
     try {
@@ -917,7 +996,8 @@ class DataService {
         // Backend return list langsung atau dibungkus data?
         // Berdasarkan controller index: return response()->json($data); (Langsung List)
         if (json is List) return json;
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
         return [];
       }
       return [];
@@ -953,10 +1033,10 @@ class DataService {
         Uri.parse('${AuthService.baseUrl}/raw-material-stock-out/$id/post'),
         headers: _headers(),
       );
-      
+
       // Backend return 200 OK jika sukses, 500 jika stok kurang
       if (response.statusCode == 200) return true;
-      
+
       print("Gagal Post RM Out: ${response.body}");
       return false;
     } catch (e) {
@@ -978,7 +1058,7 @@ class DataService {
     }
   }
 
-// --- RAW MATERIAL STOCK ADJUSTMENT ---
+  // --- RAW MATERIAL STOCK ADJUSTMENT ---
 
   Future<List<dynamic>> getRawMaterialStockAdjustments() async {
     try {
@@ -996,14 +1076,16 @@ class DataService {
     }
   }
 
-  Future<bool> createRawMaterialStockAdjustment(Map<String, dynamic> data) async {
+  Future<bool> createRawMaterialStockAdjustment(
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('${AuthService.baseUrl}/raw-material-stock-adjustments'),
         headers: _headers(),
         body: jsonEncode(data),
       );
-      
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         return true;
       } else {
@@ -1016,23 +1098,23 @@ class DataService {
     }
   }
 
-// --- STOCK MOVEMENTS (HISTORY) ---
+  // --- STOCK MOVEMENTS (HISTORY) ---
 
   Future<List<dynamic>> getStockMovements() async {
     try {
       // PERBAIKAN: Endpoint yang benar sesuai api.php adalah '/stock-tracking'
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/stock-tracking'), 
+        Uri.parse('${AuthService.baseUrl}/stock-tracking'),
         headers: _headers(),
       );
 
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
-        
+
         // Backend mengembalikan format: { "success": true, "data": [...] }
         if (json is Map && json.containsKey('data')) {
           return List<dynamic>.from(json['data']);
-        } 
+        }
         // Jaga-jaga jika backend mengembalikan list langsung
         else if (json is List) {
           return List<dynamic>.from(json);
@@ -1045,13 +1127,19 @@ class DataService {
     }
   }
 
-// --- Laporan Kartu Persediaan ---
+  // --- Laporan Kartu Persediaan ---
 
-  Future<List<dynamic>> getInventoryProducts({String? startDate, String? endDate, String? search}) async {
+  Future<List<dynamic>> getInventoryProducts({
+    String? startDate,
+    String? endDate,
+    String? search,
+  }) async {
     try {
       String queryParams = '?';
-      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
-      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (startDate != null && startDate.isNotEmpty)
+        queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty)
+        queryParams += 'end_date=$endDate&';
       if (search != null && search.isNotEmpty) queryParams += 'search=$search';
 
       final response = await http.get(
@@ -1072,11 +1160,17 @@ class DataService {
     }
   }
 
-  Future<List<dynamic>> getInventoryRawMaterials({String? startDate, String? endDate, String? search}) async {
+  Future<List<dynamic>> getInventoryRawMaterials({
+    String? startDate,
+    String? endDate,
+    String? search,
+  }) async {
     try {
       String queryParams = '?';
-      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
-      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (startDate != null && startDate.isNotEmpty)
+        queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty)
+        queryParams += 'end_date=$endDate&';
       if (search != null && search.isNotEmpty) queryParams += 'search=$search';
 
       final response = await http.get(
@@ -1097,17 +1191,25 @@ class DataService {
     }
   }
 
- // --- REPORTS (LAPORAN) ---
- // --- LAPORAN BARANG MASUK ---
-  Future<Map<String, dynamic>?> getIncomingGoodsReport({String? startDate, String? endDate, String? search}) async {
+  // --- REPORTS (LAPORAN) ---
+  // --- LAPORAN BARANG MASUK ---
+  Future<Map<String, dynamic>?> getIncomingGoodsReport({
+    String? startDate,
+    String? endDate,
+    String? search,
+  }) async {
     try {
       String queryParams = '?';
-      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
-      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (startDate != null && startDate.isNotEmpty)
+        queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty)
+        queryParams += 'end_date=$endDate&';
       if (search != null && search.isNotEmpty) queryParams += 'search=$search';
 
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/inventory/incoming-report$queryParams'),
+        Uri.parse(
+          '${AuthService.baseUrl}/inventory/incoming-report$queryParams',
+        ),
         headers: _headers(),
       );
 
@@ -1125,15 +1227,23 @@ class DataService {
   }
 
   // --- LAPORAN BARANG KELUAR ---
-  Future<Map<String, dynamic>?> getOutgoingGoodsReport({String? startDate, String? endDate, String? search}) async {
+  Future<Map<String, dynamic>?> getOutgoingGoodsReport({
+    String? startDate,
+    String? endDate,
+    String? search,
+  }) async {
     try {
       String queryParams = '?';
-      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
-      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
+      if (startDate != null && startDate.isNotEmpty)
+        queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty)
+        queryParams += 'end_date=$endDate&';
       if (search != null && search.isNotEmpty) queryParams += 'search=$search';
 
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/inventory/outgoing-report$queryParams'),
+        Uri.parse(
+          '${AuthService.baseUrl}/inventory/outgoing-report$queryParams',
+        ),
         headers: _headers(),
       );
 
@@ -1151,7 +1261,7 @@ class DataService {
   }
 
   // --- PURCHASE REQUESTS ---
-Future<List<dynamic>> getPurchaseRequests() async {
+  Future<List<dynamic>> getPurchaseRequests() async {
     try {
       final response = await http.get(
         Uri.parse('${AuthService.baseUrl}/purchase-requests'),
@@ -1160,7 +1270,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
         // Backend return array langsung (berdasarkan controller index)
-        if (json is List) return json; 
+        if (json is List) return json;
         return [];
       }
       return [];
@@ -1177,7 +1287,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
         headers: _headers(),
         body: jsonEncode(data),
       );
-      
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         return true;
       } else {
@@ -1203,7 +1313,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-// --- PURCHASE REQUEST WORKFLOW ---
+  // --- PURCHASE REQUEST WORKFLOW ---
 
   Future<bool> submitPurchaseRequest(int id) async {
     try {
@@ -1244,7 +1354,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-// --- PURCHASE REQUEST ITEMS ---
+  // --- PURCHASE REQUEST ITEMS ---
 
   // Ambil Detail PR (termasuk items) berdasarkan ID
   Future<Map<String, dynamic>?> getPurchaseRequestDetail(int id) async {
@@ -1277,7 +1387,10 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-  Future<bool> updatePurchaseRequestItem(int id, Map<String, dynamic> data) async {
+  Future<bool> updatePurchaseRequestItem(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await http.put(
         Uri.parse('${AuthService.baseUrl}/purchase-request-items/$id'),
@@ -1304,7 +1417,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-// --- PURCHASE ORDERS (PO) ---
+  // --- PURCHASE ORDERS (PO) ---
 
   Future<List<dynamic>> getPurchaseOrders() async {
     try {
@@ -1408,7 +1521,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-// --- GOODS RECEIPTS (PENERIMAAN BARANG) ---
+  // --- GOODS RECEIPTS (PENERIMAAN BARANG) ---
 
   // Get List
   Future<List<dynamic>> getGoodsReceipts() async {
@@ -1435,7 +1548,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
         headers: _headers(),
         body: jsonEncode(data),
       );
-      
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         return true;
       } else {
@@ -1491,7 +1604,7 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-// --- PURCHASE RETURNS (RETUR PEMBELIAN) ---
+  // --- PURCHASE RETURNS (RETUR PEMBELIAN) ---
 
   Future<List<dynamic>> getPurchaseReturns() async {
     try {
@@ -1515,7 +1628,9 @@ Future<List<dynamic>> getPurchaseRequests() async {
   Future<List<dynamic>> getReturnablePOs() async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/purchase-returns-helpers/returnable-pos'),
+        Uri.parse(
+          '${AuthService.baseUrl}/purchase-returns-helpers/returnable-pos',
+        ),
         headers: _headers(),
       );
       if (response.statusCode == 200) return jsonDecode(response.body);
@@ -1533,7 +1648,8 @@ Future<List<dynamic>> getPurchaseRequests() async {
         headers: _headers(),
         body: jsonEncode(data),
       );
-      if (response.statusCode != 201) print("Gagal Create Return: ${response.body}");
+      if (response.statusCode != 201)
+        print("Gagal Create Return: ${response.body}");
       return response.statusCode == 201;
     } catch (e) {
       print("Error Create Return: $e");
@@ -1548,7 +1664,8 @@ Future<List<dynamic>> getPurchaseRequests() async {
         Uri.parse('${AuthService.baseUrl}/purchase-returns/$id/$action'),
         headers: _headers(),
       );
-      if (response.statusCode != 200) print("Gagal $action Return: ${response.body}");
+      if (response.statusCode != 200)
+        print("Gagal $action Return: ${response.body}");
       return response.statusCode == 200;
     } catch (e) {
       print("Error $action Return: $e");
@@ -1569,15 +1686,19 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-// --- INVOICE RECEIPTS (TANDA TERIMA FAKTUR) ---
+  // --- INVOICE RECEIPTS (TANDA TERIMA FAKTUR) ---
 
   Future<List<dynamic>> getInvoiceReceipts() async {
     try {
-      final response = await http.get(Uri.parse('${AuthService.baseUrl}/invoice-receipts'), headers: _headers());
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts'),
+        headers: _headers(),
+      );
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
         if (json is List) return json;
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
       }
       return [];
     } catch (e) {
@@ -1589,11 +1710,17 @@ Future<List<dynamic>> getPurchaseRequests() async {
   // API BARU: Untuk Dropdown Form Create
   Future<List<dynamic>> getEligiblePOs() async {
     try {
-      final response = await http.get(Uri.parse('${AuthService.baseUrl}/invoice-receipts-helpers/eligible-pos'), headers: _headers());
+      final response = await http.get(
+        Uri.parse(
+          '${AuthService.baseUrl}/invoice-receipts-helpers/eligible-pos',
+        ),
+        headers: _headers(),
+      );
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
         if (json is List) return json;
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
       }
       return [];
     } catch (e) {
@@ -1619,7 +1746,10 @@ Future<List<dynamic>> getPurchaseRequests() async {
 
   Future<bool> actionInvoiceReceipt(int id, String action) async {
     try {
-      final response = await http.post(Uri.parse('${AuthService.baseUrl}/invoice-receipts/$id/$action'), headers: _headers());
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts/$id/$action'),
+        headers: _headers(),
+      );
       return response.statusCode == 200;
     } catch (e) {
       print("Error Action Invoice Receipt: $e");
@@ -1629,29 +1759,60 @@ Future<List<dynamic>> getPurchaseRequests() async {
 
   Future<bool> deleteInvoiceReceipt(int id) async {
     try {
-      final response = await http.delete(Uri.parse('${AuthService.baseUrl}/invoice-receipts/$id'), headers: _headers());
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts/$id'),
+        headers: _headers(),
+      );
       return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-// --- LAPORAN PEMBELIAN SUPPLIER ---
+  // Mengambil data khusus untuk cetak PDF
+  Future<Map<String, dynamic>?> getInvoicePrintData(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts/$id/print'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print("Error Get Print Data: $e");
+      return null;
+    }
+  }
 
-  Future<Map<String, dynamic>?> getSupplierPurchaseReport({String? startDate, String? endDate, String? supplierId}) async {
+  // --- LAPORAN PEMBELIAN SUPPLIER ---
+
+  Future<Map<String, dynamic>?> getSupplierPurchaseReport({
+    String? startDate,
+    String? endDate,
+    String? supplierId,
+  }) async {
     try {
       String queryParams = '?';
-      if (startDate != null && startDate.isNotEmpty) queryParams += 'start_date=$startDate&';
-      if (endDate != null && endDate.isNotEmpty) queryParams += 'end_date=$endDate&';
-      if (supplierId != null && supplierId.isNotEmpty) queryParams += 'supplier_id=$supplierId';
+      if (startDate != null && startDate.isNotEmpty)
+        queryParams += 'start_date=$startDate&';
+      if (endDate != null && endDate.isNotEmpty)
+        queryParams += 'end_date=$endDate&';
+      if (supplierId != null && supplierId.isNotEmpty)
+        queryParams += 'supplier_id=$supplierId';
 
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/supplier-purchase-report$queryParams'),
+        Uri.parse(
+          '${AuthService.baseUrl}/supplier-purchase-report$queryParams',
+        ),
         headers: _headers(),
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Mengembalikan Map yang berisi 'data' dan 'meta'
+        return jsonDecode(
+          response.body,
+        ); // Mengembalikan Map yang berisi 'data' dan 'meta'
       }
       return null;
     } catch (e) {
@@ -1660,9 +1821,201 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
+  //Penjualan
+  //Sales Quotations
+  Future<List<dynamic>> getSalesQuotations() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-quotations'),
+        headers: _headers(),
+      );
 
-// Produksi
-// --- BILL OF MATERIALS (BOM) ---
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+
+        // Pastikan status respon success
+        if (json['success'] == true || json['data'] != null) {
+          var responseData = json['data'];
+
+          // CEK: Jika data dari paginate() Laravel (berbentuk Map/Objek yang memiliki key 'data' lagi)
+          if (responseData is Map && responseData.containsKey('data')) {
+            return List<dynamic>.from(responseData['data']);
+          }
+          // CEK: Jika data dari get() biasa (langsung berbentuk List/Array)
+          else if (responseData is List) {
+            return List<dynamic>.from(responseData);
+          }
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get SQ: $e");
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getSalesQuotationDetail(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-quotations/$id'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<bool> createSalesQuotation(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-quotations'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create SQ: $e");
+      return false;
+    }
+  }
+
+  // Aksi untuk Approve atau Reject
+  Future<bool> actionSalesQuotation(int id, String action) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-quotations/$id/$action'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateSalesQuotationStatus(int id, String status) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/sales-quotations/$id'),
+        headers: _headers(),
+        body: jsonEncode({"status": status}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Update SQ Status: $e");
+      return false;
+    }
+  }
+
+  Future<bool> deleteSalesQuotation(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/sales-quotations/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Sales Orders
+  Future<List<dynamic>> getSalesOrders() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-orders'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['success'] == true || json['data'] != null) {
+          var responseData = json['data'];
+          if (responseData is Map && responseData.containsKey('data')) {
+            return List<dynamic>.from(responseData['data']);
+          } else if (responseData is List) {
+            return List<dynamic>.from(responseData);
+          }
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get SO: $e");
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getSalesOrderDetail(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-orders/$id'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<bool> createSalesOrder(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-orders'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create SO: $e");
+      return false;
+    }
+  }
+
+  Future<bool> updateSalesOrderStatus(int id, String status) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/sales-orders/$id'),
+        headers: _headers(),
+        body: jsonEncode({
+          "status": status,
+        }), // Bisa pending, processing, completed, dsb
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteSalesOrder(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/sales-orders/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- Fungsi Convert SQ ke SO (SPK) ---
+  Future<bool> convertSqToSo(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-quotations/$id/convert'),
+        headers: _headers(),
+      );
+      // Backend mengembalikan status 201 Created saat sukses
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Convert SQ: $e");
+      return false;
+    }
+  }
+
+  // Produksi
+  // --- BILL OF MATERIALS (BOM) ---
 
   Future<List<dynamic>> getBOMs() async {
     try {
@@ -1672,7 +2025,8 @@ Future<List<dynamic>> getPurchaseRequests() async {
       );
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
         return List<dynamic>.from(json);
       }
       return [];
@@ -1696,15 +2050,32 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-// --- PRODUCTION ORDERS ---
+  Future<bool> deleteBOM(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/bill-of-materials/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete BOM: $e");
+      return false;
+    }
+  }
+
+  // --- PRODUCTION ORDERS ---
 
   Future<List<dynamic>> getProductionOrders() async {
     try {
-      final response = await http.get(Uri.parse('${AuthService.baseUrl}/production-orders'), headers: _headers());
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/production-orders'),
+        headers: _headers(),
+      );
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
         if (json is List) return json;
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
       }
       return [];
     } catch (e) {
@@ -1727,17 +2098,27 @@ Future<List<dynamic>> getPurchaseRequests() async {
     }
   }
 
-  // Fungsi khusus Release karena backend akan mengecek ketersediaan stok
+  // Release PO (Cek Stok Bahan Baku)
   Future<Map<String, dynamic>> releaseProductionOrder(int id) async {
     try {
-      final response = await http.post(Uri.parse('${AuthService.baseUrl}/production-orders/$id/release'), headers: _headers());
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/production-orders/$id/release'),
+        headers: _headers(),
+      );
       var json = jsonDecode(response.body);
-      
+
       if (response.statusCode == 200) {
-        return {'success': true, 'message': json['message'] ?? 'Berhasil di-release'};
+        return {
+          'success': true,
+          'message': json['message'] ?? 'Berhasil di-release',
+        };
       } else {
-        // Menangkap error 422 jika material tidak cukup
-        return {'success': false, 'message': json['message'] ?? 'Gagal', 'data': json['insufficient_materials']};
+        // Menangkap error jika material tidak cukup (biasanya 422 Unprocessable Entity)
+        return {
+          'success': false,
+          'message': json['message'] ?? 'Gagal',
+          'data': json['insufficient_materials'],
+        };
       }
     } catch (e) {
       print("Error Release PO: $e");
@@ -1747,17 +2128,23 @@ Future<List<dynamic>> getPurchaseRequests() async {
 
   Future<bool> deleteProductionOrder(int id) async {
     try {
-      final response = await http.delete(Uri.parse('${AuthService.baseUrl}/production-orders/$id'), headers: _headers());
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/production-orders/$id'),
+        headers: _headers(),
+      );
       return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-// --- PRODUCTION EXECUTIONS & HPP ---
+  // --- PRODUCTION EXECUTIONS & HPP ---
 
-  // Mengambil daftar eksekusi produksi (In Progress & Completed)
-  Future<List<dynamic>> getProductionExecutions({String? startDate, String? endDate}) async {
+  // Mengambil daftar eksekusi produksi (Released, In Progress, Completed)
+  Future<List<dynamic>> getProductionExecutions({
+    String? startDate,
+    String? endDate,
+  }) async {
     try {
       String queryParams = '?';
       if (startDate != null) queryParams += 'start_date=$startDate&';
@@ -1769,7 +2156,8 @@ Future<List<dynamic>> getPurchaseRequests() async {
       );
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
-        if (json is Map && json.containsKey('data')) return List<dynamic>.from(json['data']);
+        if (json is Map && json.containsKey('data'))
+          return List<dynamic>.from(json['data']);
         return List<dynamic>.from(json);
       }
       return [];
@@ -1780,10 +2168,15 @@ Future<List<dynamic>> getPurchaseRequests() async {
   }
 
   // Memulai Produksi (Memotong stok bahan baku)
-  Future<bool> startProduction(int poId, Map<String, dynamic> data) async {
+  Future<bool> startProduction(
+    int executionId,
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/production-orders/$poId/start'),
+        Uri.parse(
+          '${AuthService.baseUrl}/production-executions/$executionId/start',
+        ),
         headers: _headers(),
         body: jsonEncode(data),
       );
@@ -1795,10 +2188,15 @@ Future<List<dynamic>> getPurchaseRequests() async {
   }
 
   // Menyelesaikan Produksi (Menghitung HPP & Menambah stok produk jadi)
-  Future<bool> completeProduction(int poId, Map<String, dynamic> data) async {
+  Future<bool> completeProduction(
+    int executionId,
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/production-orders/$poId/complete'),
+        Uri.parse(
+          '${AuthService.baseUrl}/production-executions/$executionId/complete',
+        ),
         headers: _headers(),
         body: jsonEncode(data),
       );
@@ -1810,10 +2208,12 @@ Future<List<dynamic>> getPurchaseRequests() async {
   }
 
   // Mengambil Laporan Rincian HPP
-  Future<Map<String, dynamic>?> getProductionReport(int poId) async {
+  Future<Map<String, dynamic>?> getProductionReport(int executionId) async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/production-orders/$poId/report'),
+        Uri.parse(
+          '${AuthService.baseUrl}/production-executions/$executionId/report',
+        ),
         headers: _headers(),
       );
       if (response.statusCode == 200) {
@@ -1825,7 +2225,6 @@ Future<List<dynamic>> getPurchaseRequests() async {
       return null;
     }
   }
-
 
   // Helper Headers
   Map<String, String> _headers() {
