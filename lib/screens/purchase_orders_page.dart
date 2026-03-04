@@ -23,10 +23,10 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
 
   void _fetchData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       var pos = await DataService().getPurchaseOrders();
-      var sups = await DataService().getSuppliers(); 
+      var sups = await DataService().getSuppliers();
 
       if (!mounted) return;
       setState(() {
@@ -44,11 +44,15 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
   // --- EDIT HEADER (Supplier, Date, Notes) ---
   void _editHeader(Map<String, dynamic> po) {
     if (po['status'] != 'draft') {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Hanya PO Draft yang bisa diedit!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Hanya PO Draft yang bisa diedit!")),
+      );
       return;
     }
 
-    final dateCtrl = TextEditingController(text: po['order_date'] ?? DateFormat('yyyy-MM-dd').format(DateTime.now()));
+    final dateCtrl = TextEditingController(
+      text: po['order_date'] ?? DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    );
     final notesCtrl = TextEditingController(text: po['notes'] ?? '');
     int? selectedSupplierId = po['supplier_id'];
 
@@ -66,59 +70,94 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                     DropdownButtonFormField<int>(
                       value: selectedSupplierId,
                       decoration: const InputDecoration(labelText: "Supplier"),
-                      items: _suppliers.map((s) => DropdownMenuItem<int>(
-                        value: s['id'], 
-                        child: Text(s['nama'] ?? '-')
-                      )).toList(),
-                      onChanged: (val) => setStateDialog(() => selectedSupplierId = val),
+                      items: _suppliers
+                          .map(
+                            (s) => DropdownMenuItem<int>(
+                              value: s['id'],
+                              child: Text(s['nama'] ?? '-'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setStateDialog(() => selectedSupplierId = val),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: dateCtrl,
                       readOnly: true,
-                      decoration: const InputDecoration(labelText: "Tanggal Order", icon: Icon(Icons.calendar_today)),
+                      decoration: const InputDecoration(
+                        labelText: "Tanggal Order",
+                        icon: Icon(Icons.calendar_today),
+                      ),
                       onTap: () async {
-                        DateTime? p = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2100));
-                        if(p!=null) setStateDialog(() => dateCtrl.text = DateFormat('yyyy-MM-dd').format(p));
+                        DateTime? p = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (p != null)
+                          setStateDialog(
+                            () => dateCtrl.text = DateFormat(
+                              'yyyy-MM-dd',
+                            ).format(p),
+                          );
                       },
                     ),
                     const SizedBox(height: 10),
-                    TextField(controller: notesCtrl, decoration: const InputDecoration(labelText: "Catatan")),
+                    TextField(
+                      controller: notesCtrl,
+                      decoration: const InputDecoration(labelText: "Catatan"),
+                    ),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Batal"),
+                ),
                 ElevatedButton(
                   onPressed: () async {
                     final messenger = ScaffoldMessenger.of(context);
 
                     Navigator.pop(ctx);
                     setState(() => _isLoading = true);
-                    
-                    bool success = await DataService().updatePurchaseOrder(po['id'], {
-                      "supplier_id": selectedSupplierId,
-                      "order_date": dateCtrl.text,
-                      "notes": notesCtrl.text
-                    });
+
+                    bool success = await DataService()
+                        .updatePurchaseOrder(po['id'], {
+                          "supplier_id": selectedSupplierId,
+                          "order_date": dateCtrl.text,
+                          "notes": notesCtrl.text,
+                        });
 
                     if (!mounted) return;
 
                     if (success) {
                       _fetchData();
-                      messenger.showSnackBar(const SnackBar(content: Text("PO Updated!"), backgroundColor: Colors.green));
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text("PO Updated!"),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
                     } else {
                       setState(() => _isLoading = false);
-                      messenger.showSnackBar(const SnackBar(content: Text("Gagal update PO"), backgroundColor: Colors.red));
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text("Gagal update PO"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                     }
                   },
                   child: const Text("Simpan"),
-                )
+                ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 
@@ -133,10 +172,16 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
         content: TextField(
           controller: priceCtrl,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: "Harga (Rp)", prefixText: "Rp "),
+          decoration: const InputDecoration(
+            labelText: "Harga (Rp)",
+            prefixText: "Rp ",
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Batal"),
+          ),
           ElevatedButton(
             onPressed: () async {
               double? price = double.tryParse(priceCtrl.text);
@@ -146,56 +191,92 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
 
               Navigator.pop(ctx);
               setState(() => _isLoading = true);
-              
-              bool success = await DataService().updatePOItemPrice(itemId, price);
-              
+
+              bool success = await DataService().updatePOItemPrice(
+                itemId,
+                price,
+              );
+
               if (!mounted) return;
 
               if (success) {
                 _fetchData();
-                messenger.showSnackBar(const SnackBar(content: Text("Harga disimpan!"), backgroundColor: Colors.green));
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text("Harga disimpan!"),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               } else {
                 setState(() => _isLoading = false);
-                messenger.showSnackBar(const SnackBar(content: Text("Gagal simpan harga"), backgroundColor: Colors.red));
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text("Gagal simpan harga"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
             child: const Text("Simpan"),
-          )
+          ),
         ],
-      )
+      ),
     );
   }
 
   // --- ACTIONS: SUBMIT / RECEIVE ---
   void _processAction(int id, String action) async {
-    bool confirm = await showDialog(
-      context: context, 
-      builder: (ctx) => AlertDialog(
-        title: Text("$action PO"),
-        content: Text("Yakin ingin melakukan $action?"),
-        actions: [
-          TextButton(onPressed: ()=>Navigator.pop(ctx, false), child: const Text("Batal")),
-          TextButton(onPressed: ()=>Navigator.pop(ctx, true), child: const Text("Ya", style: TextStyle(fontWeight: FontWeight.bold))),
-        ],
-      )
-    ) ?? false;
+    bool confirm =
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text("$action PO"),
+            content: Text("Yakin ingin melakukan $action?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text("Batal"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  "Ya",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
 
     if (confirm) {
       final messenger = ScaffoldMessenger.of(context);
 
       setState(() => _isLoading = true);
       bool success = false;
-      if (action == "Submit") success = await DataService().submitPurchaseOrder(id);
-      if (action == "Receive") success = await DataService().approvePurchaseOrder(id);
+      if (action == "Submit")
+        success = await DataService().submitPurchaseOrder(id);
+      if (action == "Receive")
+        success = await DataService().approvePurchaseOrder(id);
 
       if (!mounted) return;
 
       if (success) {
         _fetchData();
-        messenger.showSnackBar(SnackBar(content: Text("Berhasil $action"), backgroundColor: Colors.green));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text("Berhasil $action"),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
         setState(() => _isLoading = false);
-        messenger.showSnackBar(const SnackBar(content: Text("Gagal memproses"), backgroundColor: Colors.red));
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text("Gagal memproses"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -203,14 +284,29 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
   Widget _buildStatusBadge(String status) {
     Color color;
     switch (status.toLowerCase()) {
-      case 'received': color = Colors.green; break;
-      case 'sent': color = Colors.blue; break;
-      default: color = Colors.orange;
+      case 'received':
+        color = Colors.green;
+        break;
+      case 'sent':
+        color = Colors.blue;
+        break;
+      default:
+        color = Colors.orange;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-      child: Text(status.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+      ),
     );
   }
 
@@ -220,160 +316,251 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
       padding: const EdgeInsets.all(20),
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Purchase Orders", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Text("Kelola pemesanan pembelian ke supplier", style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const Text(
+              "Purchase Orders",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Text(
+              "Kelola pemesanan pembelian ke supplier",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             const SizedBox(height: 20),
 
-            _isLoading 
-              ? const Center(child: CircularProgressIndicator()) 
-              : _orders.isEmpty
-                  ? const Center(child: Text("Belum ada data PO. Silakan Generate dari PR."))
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _orders.length,
-                      separatorBuilder: (ctx, i) => const SizedBox(height: 15),
-                      itemBuilder: (ctx, i) {
-                        var po = _orders[i];
-                        String status = po['status'] ?? 'draft';
-                        List items = po['items'] ?? [];
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _orders.isEmpty
+                ? const Center(
+                    child: Text("Belum ada data PO. Silakan Generate dari PR."),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _orders.length,
+                    separatorBuilder: (ctx, i) => const SizedBox(height: 15),
+                    itemBuilder: (ctx, i) {
+                      var po = _orders[i];
+                      String status = po['status'] ?? 'draft';
+                      List items = po['items'] ?? [];
 
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header Card (Kode & Badge)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded( // FIX: Bungkus Column dengan Expanded agar tidak overflow jika kode panjang
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            po['kode'] ?? '-', 
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "Ref PR: ${po['purchase_request']?['kode'] ?? '-'}", 
-                                            style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8), // Spacer
-                                    _buildStatusBadge(status),
-                                  ],
-                                ),
-                                const Divider(),
-                                
-                                // Info Supplier & Tanggal (FIXED for Pixel Overflow)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded( // FIX: Bungkus Supplier dengan Expanded
-                                      child: Text(
-                                        "Supplier: ${po['supplier']?['nama'] ?? 'Belum dipilih'}", 
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold, 
-                                          color: po['supplier'] == null ? Colors.red : Colors.black87
-                                        ),
-                                        overflow: TextOverflow.ellipsis, // Potong teks jika kepanjangan
-                                        maxLines: 1,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10), // Jarak aman antara supplier dan tanggal
-                                    Text(
-                                      po['order_date'] ?? '-',
-                                      style: const TextStyle(fontWeight: FontWeight.w500),
-                                    ),
-                                  ],
-                                ),
-
-                                // Edit Button (Hanya Draft)
-                                if (status == 'draft')
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton.icon(
-                                      onPressed: () => _editHeader(po), 
-                                      icon: const Icon(Icons.edit, size: 14), 
-                                      label: const Text("Edit Info")
-                                    ),
-                                  ),
-                                
-                                const SizedBox(height: 10),
-                                const Text("Items:", style: TextStyle(fontWeight: FontWeight.bold)),
-                                
-                                // List Items (Tabel Mini)
-                                ...items.map((item) {
-                                  String itemName = item['raw_material']?['name'] ?? item['product']?['name'] ?? 'Item #${item['id']}';
-                                  double price = double.tryParse(item['price'].toString()) ?? 0;
-                                  
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
-                                    child: Row(
+                      return Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header Card (Kode & Badge)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    // FIX: Bungkus Column dengan Expanded agar tidak overflow jika kode panjang
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Expanded(flex: 3, child: Text("- $itemName", overflow: TextOverflow.ellipsis)),
-                                        Expanded(flex: 1, child: Text("x${item['quantity']}")),
-                                        Expanded(flex: 2, child: Text("Rp ${price.toStringAsFixed(0)}", textAlign: TextAlign.right)),
-                                        
-                                        if (status == 'draft')
-                                          IconButton(
-                                            icon: const Icon(Icons.edit_note, color: Colors.blue, size: 18),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(),
-                                            onPressed: () => _setPrice(item['id'], price),
+                                        Text(
+                                          po['kode'] ?? '-',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
                                           ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "Ref PR: ${po['purchase_request']?['kode'] ?? '-'}",
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ],
                                     ),
-                                  );
-                                }),
+                                  ),
+                                  const SizedBox(width: 8), // Spacer
+                                  _buildStatusBadge(status),
+                                ],
+                              ),
+                              const Divider(),
 
-                                // Actions
-                                const SizedBox(height: 10),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    if (status == 'draft') ...[
-                                      OutlinedButton.icon(
-                                        onPressed: () => DataService().deletePurchaseOrder(po['id']).then((_) => _fetchData()), 
-                                        icon: const Icon(Icons.delete, color: Colors.red, size: 16),
-                                        label: const Text("Hapus", style: TextStyle(color: Colors.red)),
+                              // Info Supplier & Tanggal (FIXED for Pixel Overflow)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    // FIX: Bungkus Supplier dengan Expanded
+                                    child: Text(
+                                      "Supplier: ${po['supplier']?['nama'] ?? 'Belum dipilih'}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: po['supplier'] == null
+                                            ? Colors.red
+                                            : Colors.black87,
                                       ),
-                                      const SizedBox(width: 10),
-                                      ElevatedButton.icon(
-                                        onPressed: () => _processAction(po['id'], "Submit"),
-                                        icon: const Icon(Icons.send, size: 16, color: Colors.white),
-                                        label: const Text("Kirim ke Supplier", style: TextStyle(color: Colors.white)),
-                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                                      overflow: TextOverflow
+                                          .ellipsis, // Potong teks jika kepanjangan
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    width: 10,
+                                  ), // Jarak aman antara supplier dan tanggal
+                                  Text(
+                                    po['order_date'] ?? '-',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              // Edit Button (Hanya Draft)
+                              if (status == 'draft')
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: () => _editHeader(po),
+                                    icon: const Icon(Icons.edit, size: 14),
+                                    label: const Text("Edit Info"),
+                                  ),
+                                ),
+
+                              const SizedBox(height: 10),
+                              const Text(
+                                "Items:",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+
+                              // List Items (Tabel Mini)
+                              ...items.map((item) {
+                                String itemName =
+                                    item['raw_material']?['name'] ??
+                                    item['product']?['name'] ??
+                                    'Item #${item['id']}';
+                                double price =
+                                    double.tryParse(item['price'].toString()) ??
+                                    0;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: Text(
+                                          "- $itemName",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                    ] else if (status == 'sent') ...[
-                                      ElevatedButton.icon(
-                                        onPressed: () => _processAction(po['id'], "Receive"),
-                                        icon: const Icon(Icons.check_circle, size: 16, color: Colors.white),
-                                        label: const Text("Barang Diterima", style: TextStyle(color: Colors.white)),
-                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                      Expanded(
+                                        flex: 1,
+                                        child: Text("x${item['quantity']}"),
                                       ),
-                                    ]
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          "Rp ${price.toStringAsFixed(0)}",
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+
+                                      if (status == 'draft')
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit_note,
+                                            color: Colors.blue,
+                                            size: 18,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          onPressed: () =>
+                                              _setPrice(item['id'], price),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }),
+
+                              // Actions
+                              const SizedBox(height: 10),
+                              Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start, // rata kiri
+                                children: [
+                                  if (status == 'draft') ...[
+                                    OutlinedButton.icon(
+                                      onPressed: () => DataService()
+                                          .deletePurchaseOrder(po['id'])
+                                          .then((_) => _fetchData()),
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                        size: 16,
+                                      ),
+                                      label: const Text(
+                                        "Hapus",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton.icon(
+                                      onPressed: () =>
+                                          _processAction(po['id'], "Submit"),
+                                      icon: const Icon(
+                                        Icons.send,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                      label: const Text(
+                                        "Kirim ke Supplier",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                      ),
+                                    ),
+                                  ] else if (status == 'sent') ...[
+                                    ElevatedButton.icon(
+                                      onPressed: () =>
+                                          _processAction(po['id'], "Receive"),
+                                      icon: const Icon(
+                                        Icons.check_circle,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                      label: const Text(
+                                        "Barang Diterima",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    ),
                                   ],
-                                )
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
+                  ),
           ],
         ),
       ),

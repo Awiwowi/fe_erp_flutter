@@ -461,6 +461,8 @@ class DataService {
     }
   }
 
+  // Initial Balance
+
   // --- STOCK REQUESTS ---
 
   Future<List<dynamic>> getStockRequests() async {
@@ -2010,6 +2012,71 @@ class DataService {
       return response.statusCode == 201 || response.statusCode == 200;
     } catch (e) {
       print("Error Convert SQ: $e");
+      return false;
+    }
+  }
+
+  // --- WORK ORDERS (PERINTAH KERJA) ---
+
+  // Mengambil daftar Work Orders dari API
+  Future<List<dynamic>> getWorkOrders() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/work-orders'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+
+        // Jika response sukses atau memiliki key 'data'
+        if (json['success'] == true || json['data'] != null) {
+          var responseData = json['data'];
+
+          // Menangani data jika dipaginasi oleh Laravel
+          if (responseData is Map && responseData.containsKey('data')) {
+            return List<dynamic>.from(responseData['data']);
+          }
+          // Menangani data jika berupa list langsung
+          else if (responseData is List) {
+            return List<dynamic>.from(responseData);
+          }
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Work Orders: $e");
+      return [];
+    }
+  }
+
+  // Memperbarui status Work Order (draft, processed, completed, canceled)
+  Future<bool> updateWorkOrderStatus(int id, String status) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/work-orders/$id'),
+        headers: _headers(),
+        body: jsonEncode({"status": status}),
+      );
+
+      // Mengembalikan true jika status code adalah 200 (OK)
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Update Work Order Status: $e");
+      return false;
+    }
+  }
+
+  // Menghapus Work Order
+  Future<bool> deleteWorkOrder(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/work-orders/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete Work Order: $e");
       return false;
     }
   }

@@ -24,6 +24,7 @@ import 'package:fe_erp_flutter/screens/stock_movements_page.dart';
 import 'package:fe_erp_flutter/screens/stock_outs_page.dart';
 import 'package:fe_erp_flutter/screens/stock_transfer_page.dart';
 import 'package:fe_erp_flutter/screens/supplier_purchase_report_page.dart';
+import 'package:fe_erp_flutter/screens/work_orders_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Wajib Import
 import '../widgets/sidebar.dart';
@@ -233,6 +234,8 @@ class _DashboardPageState extends State<DashboardPage> {
         return const SalesQuotationsPage();
       case 32:
         return const SalesOrdersPage();
+      case 33:
+        return const WorkOrdersPage();
       case 98:
         return const Center(child: Text("Settings Page"));
       default:

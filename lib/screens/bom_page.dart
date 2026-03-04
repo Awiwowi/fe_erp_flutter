@@ -386,35 +386,35 @@ class _BOMPageState extends State<BOMPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Bill of Materials (BOM)",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      Text(
-                        "Daftar resep produksi produk jadi",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                  const Text(
+                    "Bill of Materials (BOM)",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
                     ),
-                    onPressed: _showCreateDialog,
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text(
-                      "Buat BOM Baru",
-                      style: TextStyle(color: Colors.white),
+                  ),
+                  const Text(
+                    "Daftar resep produksi produk jadi",
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      onPressed: _showCreateDialog,
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text(
+                        "Buat BOM Baru",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ],

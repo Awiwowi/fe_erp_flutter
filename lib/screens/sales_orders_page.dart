@@ -113,7 +113,6 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
                             item['subtotal']?.toString() ?? '0',
                           ) ??
                           0;
-                      // Mapping menggunakan qty_pesanan (sesuai backend) atau fallback ke qty
                       String qty =
                           item['qty_pesanan']?.toString() ??
                           item['qty']?.toString() ??
@@ -170,7 +169,7 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
     );
   }
 
-  // --- MODAL BUAT SO DIRECT (MANUAL TANPA SQ) ---
+  // --- MODAL BUAT SO DIRECT ---
   void _showCreateDialog() async {
     showDialog(
       context: context,
@@ -560,15 +559,18 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
     }
   }
 
+  // Menentukan warna berdasarkan status baru
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
         return Colors.orange.shade600;
-      case 'processing':
+      case 'approved':
         return Colors.blue.shade600;
+      case 'in progress':
+        return Colors.purple.shade600;
       case 'completed':
         return Colors.green.shade600;
-      case 'cancelled':
+      case 'canceled':
         return Colors.red.shade600;
       default:
         return Colors.black;
@@ -770,18 +772,18 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
                                               _showDetailModal(item['id']),
                                         ),
 
-                                        // Pilihan ubah status (Misalnya lanjut ke proses atau cancel)
+                                        // Alur Aksi Berdasarkan Status
                                         if (status == 'pending') ...[
                                           IconButton(
                                             icon: const Icon(
-                                              Icons.play_circle_fill,
+                                              Icons.check_circle,
                                               color: Colors.blue,
                                               size: 20,
                                             ),
-                                            tooltip: 'Mulai Proses',
+                                            tooltip: 'Approve',
                                             onPressed: () => _changeStatus(
                                               item['id'],
-                                              'processing',
+                                              'approved',
                                             ),
                                           ),
                                           IconButton(
@@ -790,17 +792,31 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
                                               color: Colors.red,
                                               size: 20,
                                             ),
-                                            tooltip: 'Batalkan (Cancel)',
+                                            tooltip: 'Batalkan (Canceled)',
                                             onPressed: () => _changeStatus(
                                               item['id'],
-                                              'cancelled',
+                                              'canceled',
                                             ),
                                           ),
                                         ],
-                                        if (status == 'processing')
+                                        if (status == 'approved')
                                           IconButton(
                                             icon: const Icon(
-                                              Icons.check_circle,
+                                              Icons.play_circle_fill,
+                                              color: Colors.purple,
+                                              size: 20,
+                                            ),
+                                            tooltip:
+                                                'Mulai Proses (In Progress)',
+                                            onPressed: () => _changeStatus(
+                                              item['id'],
+                                              'in progress',
+                                            ),
+                                          ),
+                                        if (status == 'in progress')
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.done_all,
                                               color: Colors.green,
                                               size: 20,
                                             ),
@@ -812,7 +828,7 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
                                           ),
 
                                         if (status == 'pending' ||
-                                            status == 'cancelled')
+                                            status == 'canceled')
                                           IconButton(
                                             icon: const Icon(
                                               Icons.delete,
