@@ -6,10 +6,12 @@ class RawMaterialStockAdjustmentPage extends StatefulWidget {
   const RawMaterialStockAdjustmentPage({super.key});
 
   @override
-  State<RawMaterialStockAdjustmentPage> createState() => _RawMaterialStockAdjustmentPageState();
+  State<RawMaterialStockAdjustmentPage> createState() =>
+      _RawMaterialStockAdjustmentPageState();
 }
 
-class _RawMaterialStockAdjustmentPageState extends State<RawMaterialStockAdjustmentPage> {
+class _RawMaterialStockAdjustmentPageState
+    extends State<RawMaterialStockAdjustmentPage> {
   List<dynamic> _adjustments = [];
   bool _isLoading = true;
 
@@ -22,17 +24,20 @@ class _RawMaterialStockAdjustmentPageState extends State<RawMaterialStockAdjustm
   void _fetchData() async {
     setState(() => _isLoading = true);
     var data = await DataService().getRawMaterialStockAdjustments();
-    setState(() {
-      _adjustments = data;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _adjustments = data;
+        _isLoading = false;
+      });
+    }
   }
 
   // --- FORM DIALOG (STOCK OPNAME) ---
   void _showAddDialog() async {
-    // 1. Persiapkan Data Dropdown
-    List<dynamic> rawMaterials = await DataService().getRawMaterials();
-    List<dynamic> warehouses = await DataService().getWarehouses();
+    final results = await Future.wait([
+      DataService().getRawMaterials(),
+      DataService().getWarehouses(),
+    ]);
 
     if (!mounted) return;
 
@@ -40,8 +45,8 @@ class _RawMaterialStockAdjustmentPageState extends State<RawMaterialStockAdjustm
       context: context,
       builder: (context) {
         return _AdjustmentFormDialog(
-          rawMaterials: rawMaterials,
-          warehouses: warehouses,
+          rawMaterials: results[0],
+          warehouses: results[1],
           onSuccess: _fetchData, // Refresh tabel setelah sukses
         );
       },
@@ -57,29 +62,33 @@ class _RawMaterialStockAdjustmentPageState extends State<RawMaterialStockAdjustm
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10)]
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Raw Material Stock Adjustment",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // HEADER — title di atas, tombol di bawah (anti overflow)
+            const Text(
+              "Raw Material Stock Adjustment",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: _showAddDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
-                ElevatedButton.icon(
-                  onPressed: _showAddDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                  label: const Text("Stock Opname", style: TextStyle(color: Colors.white)),
-                ),
-              ],
+              ),
+              icon: const Icon(Icons.add, color: Colors.white, size: 18),
+              label: const Text(
+                "Stock Opname",
+                style: TextStyle(color: Colors.white),
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -87,60 +96,126 @@ class _RawMaterialStockAdjustmentPageState extends State<RawMaterialStockAdjustm
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _adjustments.isEmpty
-                    ? const Center(child: Text("Belum ada data penyesuaian."))
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-                          columns: const [
-                            DataColumn(label: Text("Bahan Baku", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Gudang", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Sebelum", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Sesudah", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Selisih", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Alasan", style: TextStyle(fontWeight: FontWeight.bold))),
-                          ],
-                          rows: _adjustments.map((item) {
-                            final rawMat = item['raw_material'] ?? {};
-                            final wh = item['warehouse'] ?? {};
-                            final diff = double.parse(item['difference'].toString());
+                ? const Center(child: Text("Belum ada data penyesuaian."))
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(
+                        Colors.grey.shade100,
+                      ),
+                      columns: const [
+                        DataColumn(
+                          label: Text(
+                            "Bahan Baku",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Gudang",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Sebelum",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Sesudah",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Selisih",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Alasan",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                      rows: _adjustments.map((item) {
+                        final rawMat = item['raw_material'] ?? {};
+                        final wh = item['warehouse'] ?? {};
 
-                            return DataRow(cells: [
-                              DataCell(Column(
+                        final diff =
+                            double.tryParse(
+                              item['difference']?.toString() ?? '0',
+                            ) ??
+                            0.0;
+                        final beforeQty =
+                            item['before_quantity']?.toString() ?? '0';
+                        final afterQty =
+                            item['after_quantity']?.toString() ?? '0';
+
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(rawMat['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  Text(rawMat['code'] ?? '-', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                                ],
-                              )),
-                              DataCell(Text(wh['name'] ?? '-')),
-                              DataCell(Text(item['before_quantity'].toString())),
-                              DataCell(Text(
-                                item['after_quantity'].toString(),
-                                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-                              )),
-                              DataCell(
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: diff < 0 ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    diff > 0 ? "+$diff" : "$diff",
-                                    style: TextStyle(
-                                      color: diff < 0 ? Colors.red : Colors.green,
+                                  Text(
+                                    rawMat['name'] ?? '-',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                                  Text(
+                                    rawMat['code'] ?? '-',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DataCell(Text(wh['name'] ?? '-')),
+                            DataCell(Text(beforeQty)),
+                            DataCell(
+                              Text(
+                                afterQty,
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              DataCell(Text(item['reason'] ?? '-')),
-                            ]);
-                          }).toList(),
-                        ),
-                      ),
+                            ),
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: diff < 0
+                                      ? Colors.red.withOpacity(0.1)
+                                      : Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  diff > 0 ? "+$diff" : "$diff",
+                                  style: TextStyle(
+                                    color: diff < 0 ? Colors.red : Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataCell(Text(item['reason'] ?? '-')),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
           ],
         ),
       ),
@@ -166,7 +241,7 @@ class _AdjustmentFormDialog extends StatefulWidget {
 
 class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  
+
   int? _selectedRawMaterialId;
   int? _selectedWarehouseId;
   final TextEditingController _qtyCtrl = TextEditingController();
@@ -187,22 +262,32 @@ class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
               children: [
                 // PILIH BAHAN BAKU
                 DropdownButtonFormField<int>(
-                  decoration: const InputDecoration(labelText: "Bahan Baku", border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: "Bahan Baku",
+                    border: OutlineInputBorder(),
+                  ),
                   value: _selectedRawMaterialId,
                   items: widget.rawMaterials.map((item) {
                     return DropdownMenuItem<int>(
                       value: item['id'],
-                      child: Text("${item['code']} - ${item['name']}", overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        "${item['code']} - ${item['name']}",
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
-                  onChanged: (val) => setState(() => _selectedRawMaterialId = val),
+                  onChanged: (val) =>
+                      setState(() => _selectedRawMaterialId = val),
                   validator: (val) => val == null ? "Wajib dipilih" : null,
                 ),
                 const SizedBox(height: 15),
 
                 // PILIH GUDANG
                 DropdownButtonFormField<int>(
-                  decoration: const InputDecoration(labelText: "Gudang", border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: "Gudang",
+                    border: OutlineInputBorder(),
+                  ),
                   value: _selectedWarehouseId,
                   items: widget.warehouses.map((item) {
                     return DropdownMenuItem<int>(
@@ -210,7 +295,8 @@ class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
                       child: Text(item['name']),
                     );
                   }).toList(),
-                  onChanged: (val) => setState(() => _selectedWarehouseId = val),
+                  onChanged: (val) =>
+                      setState(() => _selectedWarehouseId = val),
                   validator: (val) => val == null ? "Wajib dipilih" : null,
                 ),
                 const SizedBox(height: 15),
@@ -222,7 +308,7 @@ class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
                     labelText: "Stok Fisik Sekarang (After Qty)",
                     hintText: "Masukkan jumlah real saat ini",
                     border: OutlineInputBorder(),
-                    suffixText: "Unit"
+                    suffixText: "Unit",
                   ),
                   keyboardType: TextInputType.number,
                   validator: (val) {
@@ -234,7 +320,11 @@ class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
                 const SizedBox(height: 5),
                 const Text(
                   "*Sistem akan otomatis menghitung selisihnya",
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
                 const SizedBox(height: 15),
 
@@ -261,9 +351,16 @@ class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
           onPressed: _isSaving ? null : _submit,
-          child: _isSaving 
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : const Text("Simpan", style: TextStyle(color: Colors.white)),
+          child: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : const Text("Simpan", style: TextStyle(color: Colors.white)),
         ),
       ],
     );
@@ -273,11 +370,10 @@ class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
 
-      // Mapping data sesuai controller Laravel store()
       Map<String, dynamic> data = {
         "raw_material_id": _selectedRawMaterialId,
         "warehouse_id": _selectedWarehouseId,
-        "after_quantity": double.parse(_qtyCtrl.text), // Backend pakai 'after_quantity'
+        "after_quantity": double.parse(_qtyCtrl.text),
         "reason": _reasonCtrl.text,
       };
 
@@ -287,14 +383,20 @@ class _AdjustmentFormDialogState extends State<_AdjustmentFormDialog> {
       setState(() => _isSaving = false);
 
       if (success) {
-        Navigator.pop(context); // Tutup dialog
-        widget.onSuccess(); // Refresh tabel
+        Navigator.pop(context);
+        widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Stok berhasil disesuaikan!"), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text("Stok berhasil disesuaikan!"),
+            backgroundColor: Colors.green,
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Gagal menyimpan data"), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text("Gagal menyimpan data"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

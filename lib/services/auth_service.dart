@@ -3,10 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // Wajib Import ini
 
 class AuthService {
-//URL BASE API
-  static const String baseUrl = 'https://unplaying-hedwig-beautiful.ngrok-free.dev/api/v1';
-  
-  static String? token; 
+  //URL BASE API
+  static const String baseUrl = 'http://10.0.2.2:8000/api/v1';
+
+  static String? token;
 
   Future<bool> login(String email, String password) async {
     try {
@@ -21,12 +21,12 @@ class AuthService {
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
-        
+
         // 1. Inisialisasi SharedPreferences
         final prefs = await SharedPreferences.getInstance();
 
         // 2. Simpan Token
-        token = data['token']; 
+        token = data['token'];
         await prefs.setString('token', token!);
 
         // 3. Simpan Nama User
@@ -50,10 +50,10 @@ class AuthService {
     }
   }
 
-  // Fungsi Logout 
+  // Fungsi Logout
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); 
+    await prefs.clear();
     token = null;
   }
 }

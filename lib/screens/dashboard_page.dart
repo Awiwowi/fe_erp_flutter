@@ -1,10 +1,14 @@
+import 'package:fe_erp_flutter/screens/account_payables_page.dart';
+import 'package:fe_erp_flutter/screens/accounting_reports_page.dart';
 import 'package:fe_erp_flutter/screens/bom_page.dart';
 import 'package:fe_erp_flutter/screens/chart_of_accounts_page.dart';
 import 'package:fe_erp_flutter/screens/customers_page.dart';
 import 'package:fe_erp_flutter/screens/goods_movement_report_page.dart';
 import 'package:fe_erp_flutter/screens/goods_receipts_page.dart';
+import 'package:fe_erp_flutter/screens/initial_balance_page.dart';
 import 'package:fe_erp_flutter/screens/inventory_report_page.dart';
 import 'package:fe_erp_flutter/screens/invoice_receipts_page.dart';
+import 'package:fe_erp_flutter/screens/payable_payments_page.dart';
 import 'package:fe_erp_flutter/screens/product_stock_page.dart';
 import 'package:fe_erp_flutter/screens/production_executions_page.dart';
 import 'package:fe_erp_flutter/screens/production_orders_page.dart';
@@ -236,6 +240,14 @@ class _DashboardPageState extends State<DashboardPage> {
         return const SalesOrdersPage();
       case 33:
         return const WorkOrdersPage();
+      case 34:
+        return const InitialBalancePage();
+      case 35:
+        return const PayablePaymentsPage();
+      case 36:
+        return const AccountPayablesPage();
+      case 37:
+        return const AccountingReportsPage();
       case 98:
         return const Center(child: Text("Settings Page"));
       default:

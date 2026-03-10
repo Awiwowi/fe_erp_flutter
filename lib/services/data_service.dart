@@ -462,6 +462,71 @@ class DataService {
   }
 
   // Initial Balance
+  Future<List<dynamic>> getInitialBalances() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/initial-balances'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var jsonResponse = jsonDecode(response.body);
+        if (jsonResponse is List) {
+          return jsonResponse;
+        } else if (jsonResponse is Map && jsonResponse.containsKey('data')) {
+          return jsonResponse['data'];
+        }
+        return [];
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Initial Balances: $e");
+      return [];
+    }
+  }
+
+  Future<bool> createInitialBalance(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/initial-balances'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create Initial Balance: $e");
+      return false;
+    }
+  }
+
+  Future<bool> approveInitialBalance(String year) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/initial-balances/$year/approve'),
+        headers: _headers(),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Approve Initial Balance: $e");
+      return false;
+    }
+  }
+
+  Future<bool> deleteInitialBalance(String year) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/initial-balances/$year'),
+        headers: _headers(),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete Initial Balance: $e");
+      return false;
+    }
+  }
 
   // --- STOCK REQUESTS ---
 
@@ -2025,49 +2090,47 @@ class DataService {
         Uri.parse('${AuthService.baseUrl}/work-orders'),
         headers: _headers(),
       );
-
       if (response.statusCode == 200) {
-        var json = jsonDecode(response.body);
-
-        // Jika response sukses atau memiliki key 'data'
-        if (json['success'] == true || json['data'] != null) {
-          var responseData = json['data'];
-
-          // Menangani data jika dipaginasi oleh Laravel
-          if (responseData is Map && responseData.containsKey('data')) {
-            return List<dynamic>.from(responseData['data']);
-          }
-          // Menangani data jika berupa list langsung
-          else if (responseData is List) {
-            return List<dynamic>.from(responseData);
-          }
-        }
+        var jsonRes = jsonDecode(response.body);
+        // Bisa jsonRes berupa List, atau jsonRes['data'] (jika backend membungkus datanya)
+        if (jsonRes is List) return jsonRes;
+        if (jsonRes['data'] != null) return jsonRes['data'];
       }
       return [];
     } catch (e) {
-      print("Error Get Work Orders: $e");
+      print("Get Work Orders Error: $e");
       return [];
     }
   }
 
-  // Memperbarui status Work Order (draft, processed, completed, canceled)
-  Future<bool> updateWorkOrderStatus(int id, String status) async {
+  Future<bool> updateWorkOrder(int id, Map<String, dynamic> data) async {
     try {
       final response = await http.put(
         Uri.parse('${AuthService.baseUrl}/work-orders/$id'),
         headers: _headers(),
-        body: jsonEncode({"status": status}),
+        body: jsonEncode(data),
       );
 
-      // Mengembalikan true jika status code adalah 200 (OK)
-      return response.statusCode == 200;
+      var resData = jsonDecode(response.body);
+
+      // Jika status gagal dari Laravel (seperti exception kurang stok)
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        if (resData['message'] != null) {
+          throw Exception(
+            resData['message'],
+          ); // Lempar pesan error ke UI Flutter
+        }
+        return false;
+      }
+
+      return true;
     } catch (e) {
-      print("Error Update Work Order Status: $e");
-      return false;
+      // Melempar pesan error ke atas agar ditangkap oleh UI (SnackBar merah)
+      throw Exception(e.toString());
     }
   }
 
-  // Menghapus Work Order
+  // Delete Work Order
   Future<bool> deleteWorkOrder(int id) async {
     try {
       final response = await http.delete(
@@ -2076,7 +2139,6 @@ class DataService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error Delete Work Order: $e");
       return false;
     }
   }
@@ -2290,6 +2352,164 @@ class DataService {
     } catch (e) {
       print("Error Get Production Report: $e");
       return null;
+    }
+  }
+
+  // Akutansi dan Keuangan
+  // Mengambil daftar Hutang (Hanya yang belum lunas / unpaid untuk dropdown)
+  Future<List<dynamic>> getUnpaidAccountPayables() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/account-payables?status=unpaid'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var jsonRes = jsonDecode(response.body);
+        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Unpaid Account Payables: $e");
+      return [];
+    }
+  }
+
+  // Mengambil riwayat Pembayaran Hutang
+  Future<List<dynamic>> getPayablePayments() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/payable-payments'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var jsonRes = jsonDecode(response.body);
+        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Payable Payments: $e");
+      return [];
+    }
+  }
+
+  // Membuat Draft Pembayaran Hutang
+  Future<bool> createPayablePayment(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/payable-payments'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create Payable Payment: $e");
+      return false;
+    }
+  }
+
+  // Konfirmasi Pembayaran Hutang (Hutang Lunas & Jurnal Terbentuk)
+  Future<bool> confirmPayablePayment(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/payable-payments/$id/confirm'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Confirm Payable Payment: $e");
+      return false;
+    }
+  }
+
+  // Hutang Usaha (AP)
+  // 1. Mengambil semua data Hutang Usaha
+  Future<List<dynamic>> getAccountPayables() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/account-payables'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var jsonRes = jsonDecode(response.body);
+        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Account Payables: $e");
+      return [];
+    }
+  }
+
+  // 2. Mengambil TTF yang statusnya Approved (Belum jadi AP)
+  Future<List<dynamic>> getApprovedInvoiceReceipts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/invoice-receipts?status=approved'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var jsonRes = jsonDecode(response.body);
+        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Approved TTF: $e");
+      return [];
+    }
+  }
+
+  // 3. Membuat Hutang (AP) dari TTF
+  Future<bool> createAccountPayableFromTTF(int invoiceReceiptId) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '${AuthService.baseUrl}/account-payables/from-invoice-receipt',
+        ),
+        headers: _headers(),
+        body: jsonEncode({"invoice_receipt_id": invoiceReceiptId}),
+      );
+      // Backend mungkin mengembalikan 201 Created atau 200 OK
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create AP from TTF: $e");
+      return false;
+    }
+  }
+
+  // Jurnal $ Buku Besar
+  // 1. Mengambil riwayat Jurnal Umum
+  Future<List<dynamic>> getJournalEntries() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/journal-entries'), 
+        headers: _headers()
+      );
+      if (response.statusCode == 200) {
+        var jsonRes = jsonDecode(response.body);
+        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Journal Entries: $e");
+      return [];
+    }
+  }
+
+  // 2. Mengambil Laporan Buku Besar (Berdasarkan Akun & Tanggal)
+  Future<List<dynamic>> getLedgerReport(int accountId, String startDate, String endDate) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/ledger-report?account_id=$accountId&start_date=$startDate&end_date=$endDate'), 
+        headers: _headers()
+      );
+      if (response.statusCode == 200) {
+        var jsonRes = jsonDecode(response.body);
+        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Ledger Report: $e");
+      return [];
     }
   }
 

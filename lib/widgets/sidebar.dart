@@ -21,6 +21,7 @@ class _SidebarState extends State<Sidebar> {
   bool _isPembelianExpanded = false;
   bool _isPenjualanExpanded = false;
   bool _isProduksiExpanded = false;
+  bool _isAkutansiExpanded = false;
 
   @override
   void initState() {
@@ -111,6 +112,7 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(3, "Warehouses"),
                     _subMenuItem(4, "Suppliers"),
                     _subMenuItem(20, "COA"),
+                    _subMenuItem(34, "Initial Balance"),
                   ],
                 ),
 
@@ -183,6 +185,20 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(27, "Bill of Materials (BOM)"),
                     _subMenuItem(28, "Product Order"),
                     _subMenuItem(29, "Eksekusi & HPP"),
+                  ],
+                ),
+
+                _buildExpandableMenu(
+                  title: "Akutansi",
+                  icon: Icons.account_balance_outlined,
+                  isOpen: _isAkutansiExpanded,
+                  onTap: () => setState(
+                    () => _isAkutansiExpanded = !_isAkutansiExpanded,
+                  ),
+                  children: [
+                    _subMenuItem(36, "Hoetank Usaha (AP)"),
+                    _subMenuItem(35, "Pembayaran Hoetank"),
+                    _subMenuItem(37, "Jurnal & Buku Besar"),
                   ],
                 ),
 

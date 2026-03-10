@@ -14,7 +14,7 @@ class _LoginPageState extends State<LoginPage> {
   // 1. Controller untuk menangkap inputan user
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
+
   bool _isLoading = false; // Status Loading
 
   // 2. Fungsi Logika Login (API)
@@ -45,24 +45,30 @@ class _LoginPageState extends State<LoginPage> {
     if (success) {
       if (!mounted) return;
       print("Login Sukses! Masuk Dashboard...");
-      
+
       // Pindah Halaman
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const DashboardPage()),
         (route) => false,
       );
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Berhasil!"), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text("Login Berhasil!"),
+          backgroundColor: Colors.green,
+        ),
       );
     } else {
       if (!mounted) return;
       print("Login Gagal!");
-      
+
       // Muncul Pesan Error
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Gagal. Cek Email/Password atau URL Ngrok."), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Login Gagal. Cek Email/Password atau URL Ngrok."),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -77,9 +83,36 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
-              const Text("Welcome Back!", textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 40),
-
+              const Text(
+                "Welcome Back!",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 30), // Jarak antara teks dan gambar
+              // --- WIDGET GAMBAR DITAMBAHKAN DI SINI ---
+              Center(
+                child: Image.asset(
+                  'assets/images/logo_admk.png',
+                  height: 150, // Sesuaikan tinggi gambar sesuai selera
+                  // Menambahkan error builder jika ngrok mati atau gambar tidak ditemukan
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 20,
+                      width: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        size: 50,
+                        color: Colors.grey,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 40), // Jarak antara gambar dan form input
               // 3. Input Email (Wajib Pasang Controller)
               CustomTextField(
                 label: "Email",
@@ -88,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
                 controller: _emailController, // <--- PENTING
               ),
               const SizedBox(height: 20),
-              
+
               // 4. Input Password (Wajib Pasang Controller)
               CustomTextField(
                 label: "Password",
@@ -107,15 +140,26 @@ class _LoginPageState extends State<LoginPage> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromARGB(255, 0, 74, 192),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   // KALAU INI LANGSUNG NAVIGATOR, PASTI INSTAN.
                   // GANTI JADI _handleLogin AGAR DIA NUNGGU API.
-                  onPressed: _isLoading ? null : _handleLogin, 
-                  
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) // Animasi loading
-                    : const Text("Sign in", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  onPressed: _isLoading ? null : _handleLogin,
+
+                  child: _isLoading
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        ) // Animasi loading
+                      : const Text(
+                          "Sign in",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
               // ...

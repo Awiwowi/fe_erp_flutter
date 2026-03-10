@@ -38,9 +38,15 @@ class _ProductionOrdersPageState extends State<ProductionOrdersPage> {
       builder: (c) => const Center(child: CircularProgressIndicator()),
     );
 
-    var products = await DataService().getProducts();
-    var boms = await DataService().getBOMs();
-    var warehouses = await DataService().getWarehouses();
+    // Jalankan 3 request secara paralel agar lebih cepat
+    final results = await Future.wait([
+      DataService().getProducts(),
+      DataService().getBOMs(),
+      DataService().getWarehouses(),
+    ]);
+    var products = results[0];
+    var boms = results[1];
+    var warehouses = results[2];
 
     Navigator.pop(context);
 
@@ -211,6 +217,8 @@ class _ProductionOrdersPageState extends State<ProductionOrdersPage> {
                       "notes": notesCtrl.text,
                     };
 
+                    // Capture messenger SEBELUM Navigator.pop & await
+                    final messenger = ScaffoldMessenger.of(context);
                     Navigator.pop(context);
                     setState(() => _isLoading = true);
                     bool success = await DataService().createProductionOrder(
@@ -220,12 +228,12 @@ class _ProductionOrdersPageState extends State<ProductionOrdersPage> {
                     if (!mounted) return;
                     if (success) {
                       _fetchData();
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text("Draft Produksi dibuat")),
                       );
                     } else {
                       setState(() => _isLoading = false);
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text("Gagal membuat data")),
                       );
                     }

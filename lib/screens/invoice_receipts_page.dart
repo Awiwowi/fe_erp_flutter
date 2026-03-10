@@ -399,7 +399,7 @@ class _InvoiceReceiptsPageState extends State<InvoiceReceiptsPage> {
     var printData = await DataService().getInvoicePrintData(id);
 
     if (!mounted) return;
-    Navigator.pop(context); // Tutup loading
+    Navigator.pop(context);
 
     if (printData == null) {
       messenger.showSnackBar(
@@ -412,179 +412,868 @@ class _InvoiceReceiptsPageState extends State<InvoiceReceiptsPage> {
 
     final currencyFormatter = NumberFormat.currency(
       locale: 'id_ID',
-      symbol: 'Rp ',
+      symbol: '',
       decimalDigits: 0,
     );
+    final now = DateTime.now();
+    final printTime = DateFormat('d/M/yyyy, HH.mm.ss').format(now);
+    final printTimeShort = DateFormat('d/M/yyyy, HH.mm').format(now);
+
+    // Helper: format tanggal dari ISO string → "2026-03-04"
+    String fmtDate(dynamic raw) {
+      if (raw == null) return '-';
+      return raw.toString().split('T')[0];
+    }
+
+    final supplier = printData['supplier'] ?? {};
+    final receipt = printData['receipt'] ?? {};
+    final invoice = printData['invoice'] ?? {};
+    final po = printData['purchase_order'] ?? {};
+    final items = (printData['items'] as List?) ?? [];
+    final grandTotal = printData['grand_total'] ?? 0;
+
+    final supplierName = supplier['name'] ?? supplier['nama'] ?? '-';
+    final supplierAlamat = supplier['address'] ?? supplier['alamat'] ?? '-';
+    final supplierTelepon = supplier['phone'] ?? supplier['telepon'] ?? '-';
+    final supplierEmail = supplier['email'] ?? '-';
+
     final pdf = pw.Document();
 
+    // ── Warna tema ──
+    const headerColor = PdfColors.grey800;
+    const labelColor = PdfColors.grey700;
+
+    pw.Widget _labelValue(String label, String value, {bool bold = false}) {
+      return pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 85,
+            child: pw.Text(
+              label,
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                color: labelColor,
+              ),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // KOP SURAT
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        "PT. MANUFACTURA DKM",
-                        style: pw.TextStyle(
-                          fontSize: 24,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text("Sistem ERP Terintegrasi"),
-                    ],
-                  ),
-                  pw.Text(
-                    "TANDA TERIMA",
-                    style: pw.TextStyle(
-                      fontSize: 20,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blue800,
-                    ),
-                  ),
-                ],
-              ),
-              pw.Divider(thickness: 2),
-              pw.SizedBox(height: 20),
-
-              // INFO DOKUMEN & SUPPLIER
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        "No. Tanda Terima : ${printData['receipt']['receipt_number']}",
-                      ),
-                      pw.Text(
-                        "Tanggal Terima   : ${printData['receipt']['transaction_date']?.toString().split(' ')[0] ?? '-'}",
-                      ),
-                      pw.Text(
-                        "No. Faktur       : ${printData['invoice']?['invoice_number'] ?? '-'}",
-                      ),
-                      pw.Text(
-                        "Tgl Faktur       : ${printData['invoice']?['invoice_date'] ?? '-'}",
-                      ),
-                      pw.Text(
-                        "Jatuh Tempo      : ${printData['invoice']?['due_date'] ?? '-'}",
-                      ),
-                    ],
-                  ),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text(
-                        "Kepada Yth:",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                      pw.Text("${printData['supplier']['name'] ?? '-'}"),
-                      pw.Text("${printData['supplier']['address'] ?? '-'}"),
-                      pw.Text("Telp: ${printData['supplier']['phone'] ?? '-'}"),
-                    ],
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 30),
-
-              pw.Text(
-                "Berdasarkan Purchase Order No: ${printData['purchase_order']['kode']}",
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-              ),
-              pw.SizedBox(height: 10),
-
-              // TABEL BARANG
-              pw.Table.fromTextArray(
-                headers: [
-                  'Kode',
-                  'Nama Barang',
-                  'Qty',
-                  'Unit',
-                  'Harga Satuan',
-                  'Subtotal',
-                ],
-                headerStyle: pw.TextStyle(
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white,
-                ),
-                headerDecoration: const pw.BoxDecoration(
-                  color: PdfColors.blue800,
-                ),
-                cellAlignment: pw.Alignment.centerLeft,
-                data: (printData['items'] as List).map((item) {
-                  return [
-                    item['code'].toString(),
-                    item['name'].toString(),
-                    item['quantity'].toString(),
-                    item['unit'].toString(),
-                    currencyFormatter.format(item['price']),
-                    currencyFormatter.format(item['subtotal']),
-                  ];
-                }).toList(),
-              ),
-              pw.SizedBox(height: 10),
-
-              // TOTAL
-              pw.Container(
-                alignment: pw.Alignment.centerRight,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.end,
+        margin: const pw.EdgeInsets.fromLTRB(32, 24, 32, 20),
+        build: (pw.Context ctx) {
+          return [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // ── HEADER: timestamp + url ──
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      "Grand Total: ",
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
+                      printTimeShort,
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey600,
                       ),
                     ),
                     pw.Text(
-                      currencyFormatter.format(printData['grand_total'] ?? 0),
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.red800,
+                      "localhost:3000/print/invoice-receipt/$id",
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey600,
                       ),
                     ),
                   ],
                 ),
-              ),
+                pw.SizedBox(height: 6),
 
-              pw.Spacer(),
+                // ── JUDUL + KANAN: NAMA PERUSAHAAN ──
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          "TANDA TERIMA FAKTUR",
+                          style: pw.TextStyle(
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          "NO. ${receipt['receipt_number'] ?? '-'}",
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text(
+                          "PT. DKM MANUFAKTUR",
+                          style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.Text(
+                          "Jl. Raya Industri No. 123, Cikarang",
+                          style: const pw.TextStyle(
+                            fontSize: 9,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                        pw.Text(
+                          "Telp: (021) 89012345",
+                          style: const pw.TextStyle(
+                            fontSize: 9,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.Divider(thickness: 1.5),
+                pw.SizedBox(height: 8),
 
-              // TTD
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
+                // ── INFO: SUPPLIER (kiri) + TANGGAL/PO/REQUESTER (kanan) ──
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    // Kiri: Supplier
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          _labelValue(
+                            "DARI SUPPLIER",
+                            supplierName,
+                            bold: true,
+                          ),
+                          pw.SizedBox(height: 4),
+                          _labelValue("TELEPON", supplierTelepon),
+                          pw.SizedBox(height: 4),
+                          _labelValue("ALAMAT", supplierAlamat),
+                        ],
+                      ),
+                    ),
+                    pw.SizedBox(width: 20),
+                    // Kanan: Tanggal TTF, PO Ref, Requester
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          _labelValue(
+                            "TANGGAL TTF",
+                            fmtDate(receipt['transaction_date']),
+                          ),
+                          pw.SizedBox(height: 4),
+                          _labelValue(
+                            "PO REF",
+                            po['kode']?.toString() ?? '-',
+                            bold: true,
+                          ),
+                          pw.SizedBox(height: 4),
+                          _labelValue("REQUESTER", receipt['requester'] ?? '-'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+
+                // ── SEKSI I: RINCIAN FAKTUR ──
+                pw.Container(
+                  color: PdfColors.grey200,
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: pw.Text(
+                    "I. RINCIAN FAKTUR / INVOICE",
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey800,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Table(
+                  border: pw.TableBorder.all(
+                    color: PdfColors.grey400,
+                    width: 0.5,
+                  ),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(2.5),
+                    1: const pw.FlexColumnWidth(2.5),
+                    2: const pw.FlexColumnWidth(2.5),
+                    3: const pw.FlexColumnWidth(2.5),
+                  },
+                  children: [
+                    // Header row
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(
+                        color: PdfColors.grey200,
+                      ),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "NO. FAKTUR",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "TANGGAL",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "JATUH TEMPO",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "JUMLAH (RP)",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Data row
+                    pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            invoice['invoice_number']?.toString() ?? '-',
+                            style: const pw.TextStyle(fontSize: 9),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            fmtDate(invoice['invoice_date']),
+                            style: const pw.TextStyle(fontSize: 9),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            fmtDate(invoice['due_date']),
+                            style: const pw.TextStyle(fontSize: 9),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            currencyFormatter.format(invoice['amount'] ?? 0),
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                // Total row di luar tabel
+                pw.Container(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    border: pw.Border(
+                      left: pw.BorderSide(color: PdfColors.grey400, width: 0.5),
+                      right: pw.BorderSide(
+                        color: PdfColors.grey400,
+                        width: 0.5,
+                      ),
+                      bottom: pw.BorderSide(
+                        color: PdfColors.grey400,
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 5,
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.end,
                     children: [
-                      pw.Text("Dibuat Oleh,"),
-                      pw.SizedBox(height: 50),
                       pw.Text(
-                        printData['receipt']['created_by'] ?? "Admin",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        "TOTAL TERFAKTUR",
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(width: 16),
+                      pw.SizedBox(
+                        width: 80,
+                        child: pw.Text(
+                          currencyFormatter.format(invoice['amount'] ?? 0),
+                          textAlign: pw.TextAlign.right,
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  pw.Column(
+                ),
+                pw.SizedBox(height: 10),
+
+                // ── SEKSI II: RINCIAN BARANG ──
+                pw.Container(
+                  color: PdfColors.grey200,
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: pw.Text(
+                    "II. RINCIAN BARANG / JASA (REF: ${po['kode'] ?? '-'})",
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey800,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Table(
+                  border: pw.TableBorder.all(
+                    color: PdfColors.grey400,
+                    width: 0.5,
+                  ),
+                  columnWidths: {
+                    0: const pw.FixedColumnWidth(24),
+                    1: const pw.FlexColumnWidth(3),
+                    2: const pw.FixedColumnWidth(30),
+                    3: const pw.FixedColumnWidth(48),
+                    4: const pw.FixedColumnWidth(80),
+                    5: const pw.FixedColumnWidth(80),
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(
+                        color: PdfColors.grey200,
+                      ),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "No",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "Nama Produk/Material",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "Qty",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "Satuan",
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "Harga",
+                            textAlign: pw.TextAlign.right,
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 5,
+                          ),
+                          child: pw.Text(
+                            "Subtotal",
+                            textAlign: pw.TextAlign.right,
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ...items.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final item = entry.value;
+                      return pw.TableRow(
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 5,
+                            ),
+                            child: pw.Text(
+                              "${i + 1}",
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 5,
+                            ),
+                            child: pw.Text(
+                              item['name']?.toString() ?? '-',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 5,
+                            ),
+                            child: pw.Text(
+                              item['quantity']?.toString() ?? '0',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 5,
+                            ),
+                            child: pw.Text(
+                              item['unit']?.toString() ?? '-',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 5,
+                            ),
+                            child: pw.Text(
+                              currencyFormatter.format(item['price'] ?? 0),
+                              textAlign: pw.TextAlign.right,
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 5,
+                            ),
+                            child: pw.Text(
+                              currencyFormatter.format(item['subtotal'] ?? 0),
+                              textAlign: pw.TextAlign.right,
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ],
+                ),
+                // Total row di luar tabel agar label tidak terpotong
+                pw.Container(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    border: pw.Border(
+                      left: pw.BorderSide(color: PdfColors.grey400, width: 0.5),
+                      right: pw.BorderSide(
+                        color: PdfColors.grey400,
+                        width: 0.5,
+                      ),
+                      bottom: pw.BorderSide(
+                        color: PdfColors.grey400,
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 5,
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.end,
                     children: [
-                      pw.Text("Disetujui Oleh,"),
-                      pw.SizedBox(height: 50),
                       pw.Text(
-                        printData['receipt']['approved_by'] ??
-                            "...........................",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        "TOTAL NILAI BARANG",
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(width: 16),
+                      pw.SizedBox(
+                        width: 88,
+                        child: pw.Text(
+                          currencyFormatter.format(grandTotal),
+                          textAlign: pw.TextAlign.right,
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ],
+                ),
+                pw.SizedBox(height: 10),
+
+                // ── SEKSI III: DATA SUPPLIER ──
+                pw.Container(
+                  color: PdfColors.grey200,
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: pw.Text(
+                    "III. DATA SUPPLIER",
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey800,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Container(
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
+                  ),
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Row(
+                              children: [
+                                pw.SizedBox(
+                                  width: 80,
+                                  child: pw.Text(
+                                    "NAMA SUPPLIER",
+                                    style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                pw.Text(
+                                  ": $supplierName",
+                                  style: const pw.TextStyle(fontSize: 9),
+                                ),
+                              ],
+                            ),
+                            pw.SizedBox(height: 5),
+                            pw.Row(
+                              children: [
+                                pw.SizedBox(
+                                  width: 80,
+                                  child: pw.Text(
+                                    "ALAMAT",
+                                    style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                pw.Text(
+                                  ": $supplierAlamat",
+                                  style: const pw.TextStyle(fontSize: 9),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Row(
+                              children: [
+                                pw.SizedBox(
+                                  width: 80,
+                                  child: pw.Text(
+                                    "NO. TELEPON",
+                                    style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                pw.Text(
+                                  ": $supplierTelepon",
+                                  style: const pw.TextStyle(fontSize: 9),
+                                ),
+                              ],
+                            ),
+                            pw.SizedBox(height: 5),
+                            pw.Row(
+                              children: [
+                                pw.SizedBox(
+                                  width: 80,
+                                  child: pw.Text(
+                                    "EMAIL",
+                                    style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                pw.Text(
+                                  ": $supplierEmail",
+                                  style: const pw.TextStyle(fontSize: 9),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+
+                // ── CATATAN ──
+                pw.Container(
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                  ),
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        "CATATAN:",
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 3),
+                      pw.Text(
+                        receipt['notes']?.toString().isNotEmpty == true
+                            ? '"${receipt['notes']}"'
+                            : '-',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontStyle: pw.FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 14),
+
+                // ── TTD ──
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text(
+                          "DIBUAT OLEH",
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 36),
+                        pw.Text(
+                          receipt['requester'] ?? receipt['created_by'] ?? '-',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            decoration: pw.TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text(
+                          "DITERIMA OLEH",
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 36),
+                        pw.Text(
+                          receipt['created_by'] ?? '-',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            decoration: pw.TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text(
+                          "DISETUJUI OLEH",
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 36),
+                        pw.Text(
+                          receipt['approved_by'] != null
+                              ? receipt['approved_by'].toString()
+                              : "(.............................)",
+                          style: const pw.TextStyle(fontSize: 10),
+                        ),
+                        pw.Text(
+                          "Manager Purchasing",
+                          style: const pw.TextStyle(
+                            fontSize: 9,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+              ],
+            ),
+          ];
+        },
+        footer: (pw.Context ctx) {
+          return pw.Column(
+            children: [
+              pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+              pw.Center(
+                child: pw.Text(
+                  "Dicetak pada $printTime",
+                  style: const pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColors.grey500,
+                  ),
+                ),
               ),
             ],
           );
@@ -594,7 +1283,7 @@ class _InvoiceReceiptsPageState extends State<InvoiceReceiptsPage> {
 
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: "TTF_${printData['receipt']['receipt_number']}.pdf",
+      name: "TTF_${receipt['receipt_number'] ?? id}.pdf",
     );
   }
 

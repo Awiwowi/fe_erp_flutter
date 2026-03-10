@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../constants/colors.dart';
 import '../services/data_service.dart';
 
@@ -24,7 +23,7 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
     setState(() => _isLoading = true);
     try {
       var data = await DataService()
-          .getWorkOrders(); // Pastikan method ini ada di DataService
+          .getWorkOrders(); // Pastikan method ini me-return List
       if (mounted) {
         setState(() {
           _workOrders = data;
@@ -32,11 +31,12 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
         });
       }
     } catch (e) {
+      print("Error fetching work orders: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Menentukan warna label berdasarkan status baru
+  // Menentukan warna label berdasarkan status
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'draft':
@@ -45,7 +45,7 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
         return Colors.blue.shade600;
       case 'completed':
         return Colors.green.shade600;
-      case 'canceled':
+      case 'cancelled': // Disamakan dengan ejaan backend 'cancelled'
         return Colors.red.shade600;
       default:
         return Colors.black;
@@ -83,20 +83,45 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
 
     if (confirm) {
       setState(() => _isLoading = true);
-      bool success = await DataService().updateWorkOrderStatus(
-        id,
-        statusTarget,
-      ); // Pastikan method ini ada di DataService
-      if (success) {
-        _fetchData();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Status berhasil diperbarui")),
-        );
-      } else {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Gagal memperbarui status")),
-        );
+
+      try {
+        // PERBAIKAN: Mengirim format payload yang sesuai dengan Laravel
+        Map<String, dynamic> payload = {"status": statusTarget};
+
+        bool success = await DataService().updateWorkOrder(id, payload);
+
+        if (!mounted) return;
+
+        if (success) {
+          _fetchData();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Status berhasil diperbarui"),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Gagal memperbarui status. Periksa stok/koneksi."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        // Menangkap error jika dilempar dari backend (seperti stok kurang)
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Error: ${e.toString().replaceAll('Exception: ', '')}",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -221,7 +246,7 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
                                 DataCell(
                                   Row(
                                     children: [
-                                      // Aksi berdasarkan alur Draft -> Processed -> Completed
+                                      // Jika status draft
                                       if (status == 'draft') ...[
                                         IconButton(
                                           icon: const Icon(
@@ -244,10 +269,11 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
                                           tooltip: 'Batalkan WO',
                                           onPressed: () => _changeStatus(
                                             item['id'],
-                                            'canceled',
+                                            'cancelled',
                                           ),
                                         ),
                                       ],
+                                      // Jika status processed, bisa di-complete
                                       if (status == 'processed')
                                         IconButton(
                                           icon: const Icon(
@@ -262,9 +288,9 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
                                           ),
                                         ),
 
-                                      // Tombol hapus hanya jika draft atau canceled
+                                      // Tombol hapus hanya jika draft atau cancelled
                                       if (status == 'draft' ||
-                                          status == 'canceled')
+                                          status == 'cancelled')
                                         IconButton(
                                           icon: const Icon(
                                             Icons.delete_outline,
@@ -272,8 +298,67 @@ class _WorkOrdersPageState extends State<WorkOrdersPage> {
                                             size: 20,
                                           ),
                                           tooltip: 'Hapus',
-                                          onPressed: () {
-                                            // Tambahkan logika hapus jika diperlukan
+                                          onPressed: () async {
+                                            bool delConfirm =
+                                                await showDialog(
+                                                  context: context,
+                                                  builder: (ctx) => AlertDialog(
+                                                    title: const Text(
+                                                      "Hapus Data?",
+                                                    ),
+                                                    content: const Text(
+                                                      "Yakin ingin menghapus WO ini secara permanen?",
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              ctx,
+                                                              false,
+                                                            ),
+                                                        child: const Text(
+                                                          "Batal",
+                                                        ),
+                                                      ),
+                                                      ElevatedButton(
+                                                        style:
+                                                            ElevatedButton.styleFrom(
+                                                              backgroundColor:
+                                                                  Colors.red,
+                                                            ),
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              ctx,
+                                                              true,
+                                                            ),
+                                                        child: const Text(
+                                                          "Hapus",
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ) ??
+                                                false;
+
+                                            if (delConfirm) {
+                                              setState(() => _isLoading = true);
+                                              // Pastikan ada fungsi deleteWorkOrder di DataService Anda
+                                              bool delSuccess =
+                                                  await DataService()
+                                                      .deleteWorkOrder(
+                                                        item['id'],
+                                                      );
+                                              if (delSuccess) {
+                                                _fetchData();
+                                              } else {
+                                                setState(
+                                                  () => _isLoading = false,
+                                                );
+                                              }
+                                            }
                                           },
                                         ),
                                     ],
