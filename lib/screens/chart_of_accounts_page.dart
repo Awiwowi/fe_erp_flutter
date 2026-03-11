@@ -21,6 +21,20 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
     'expense',
   ];
 
+  // Tambahan List Kategori Sesuai Validasi Laravel
+  final List<String> _categories = [
+    'kas_bank',
+    'piutang',
+    'persediaan',
+    'aset_tetap',
+    'utang_lancar',
+    'utang_jangka_panjang',
+    'modal',
+    'pendapatan_usaha',
+    'biaya',
+    'pendapatan_lain',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +74,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         false;
 
     if (confirm) {
+      setState(() => _isLoading = true);
       bool success = await DataService().deleteChartOfAccount(id);
       if (!mounted) return;
 
@@ -72,6 +87,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           ),
         );
       } else {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Gagal menghapus akun"),
@@ -87,11 +103,18 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
 
     final codeCtrl = TextEditingController(text: item?['code']);
     final nameCtrl = TextEditingController(text: item?['name']);
-    final catCtrl = TextEditingController(text: item?['category']);
 
+    // Tipe Akun
     String selectedType = item?['type'] ?? _accountTypes.first;
     if (!_accountTypes.contains(selectedType)) {
       selectedType = _accountTypes.first;
+    }
+
+    // Kategori Akun
+    String? selectedCategory = item?['category'];
+    // Jika mode edit tapi kategorinya tidak ada di daftar baku, jadikan null
+    if (selectedCategory != null && !_categories.contains(selectedCategory)) {
+      selectedCategory = null;
     }
 
     bool isCash = item?['is_cash'] == 1 || item?['is_cash'] == true;
@@ -105,7 +128,10 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text(isEdit ? "Edit Akun" : "Buat Akun Baru"),
+              title: Text(
+                isEdit ? "Edit Akun" : "Buat Akun Baru",
+                style: const TextStyle(color: AppColors.primary),
+              ),
               content: SingleChildScrollView(
                 child: SizedBox(
                   width: 400,
@@ -115,7 +141,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       TextField(
                         controller: codeCtrl,
                         decoration: const InputDecoration(
-                          labelText: "Kode Akun",
+                          labelText: "Kode Akun *",
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -123,7 +149,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       TextField(
                         controller: nameCtrl,
                         decoration: const InputDecoration(
-                          labelText: "Nama Akun",
+                          labelText: "Nama Akun *",
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -131,7 +157,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       DropdownButtonFormField<String>(
                         value: selectedType,
                         decoration: const InputDecoration(
-                          labelText: "Tipe Akun",
+                          labelText: "Tipe Akun *",
                           border: OutlineInputBorder(),
                         ),
                         items: _accountTypes
@@ -149,13 +175,32 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: catCtrl,
+
+                      // DROPDOWN KATEGORI BARU
+                      DropdownButtonFormField<String>(
+                        value: selectedCategory,
                         decoration: const InputDecoration(
-                          labelText: "Kategori",
+                          labelText: "Kategori *",
                           border: OutlineInputBorder(),
                         ),
+                        items: _categories
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c,
+                                // Mengubah 'kas_bank' menjadi 'KAS BANK' untuk tampilan UI
+                                child: Text(
+                                  c.replaceAll('_', ' ').toUpperCase(),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setStateDialog(() => selectedCategory = val);
+                          }
+                        },
                       ),
+
                       const SizedBox(height: 12),
                       Row(
                         children: [
@@ -195,12 +240,13 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     backgroundColor: AppColors.primary,
                   ),
                   onPressed: () async {
+                    // Validasi Selected Category tidak boleh null
                     if (codeCtrl.text.isEmpty ||
                         nameCtrl.text.isEmpty ||
-                        catCtrl.text.isEmpty) {
+                        selectedCategory == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text("Harap isi Kode, Nama, dan Kategori"),
+                          content: Text("Harap isi Kode, Nama, dan Kategori!"),
                         ),
                       );
                       return;
@@ -210,13 +256,15 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       "code": codeCtrl.text,
                       "name": nameCtrl.text,
                       "type": selectedType,
-                      "category": catCtrl.text,
+                      "category":
+                          selectedCategory, // Mengirim data dropdown (e.g., 'kas_bank')
                       "is_cash": isCash,
                       "is_active": isActive,
                     };
 
                     final messenger = ScaffoldMessenger.of(context);
                     Navigator.pop(dialogContext);
+                    setState(() => _isLoading = true);
 
                     bool success;
                     if (isEdit) {
@@ -245,9 +293,12 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                         ),
                       );
                     } else {
+                      setState(() => _isLoading = false);
                       messenger.showSnackBar(
                         const SnackBar(
-                          content: Text("Operasi Gagal"),
+                          content: Text(
+                            "Operasi Gagal! Pastikan kode akun unik.",
+                          ),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -282,12 +333,39 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Chart of Accounts (COA)",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Chart of Accounts (COA)",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: AppColors.primary),
+                  onPressed: _fetchData,
+                  tooltip: 'Refresh Data',
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+              onPressed: () => _showFormDialog(),
+              icon: const Icon(Icons.add, color: Colors.white, size: 18),
+              label: const Text(
+                "Buat Akun Baru",
+                style: TextStyle(color: Colors.white),
               ),
             ),
             const SizedBox(height: 20),
@@ -304,13 +382,48 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                         Colors.grey.shade100,
                       ),
                       columns: const [
-                        DataColumn(label: Text("Kode")),
-                        DataColumn(label: Text("Nama Akun")),
-                        DataColumn(label: Text("Tipe")),
-                        DataColumn(label: Text("Kategori")),
-                        DataColumn(label: Text("Kas?")),
-                        DataColumn(label: Text("Status")),
-                        DataColumn(label: Text("Aksi")),
+                        DataColumn(
+                          label: Text(
+                            "Kode",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Nama Akun",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Tipe",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Kategori",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Kas?",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Status",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Aksi",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       ],
                       rows: _accounts.map((item) {
                         bool isCash =
@@ -320,7 +433,14 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
 
                         return DataRow(
                           cells: [
-                            DataCell(Text(item['code'] ?? '-')),
+                            DataCell(
+                              Text(
+                                item['code'] ?? '-',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                             DataCell(Text(item['name'] ?? '-')),
                             DataCell(
                               Container(
@@ -342,7 +462,15 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                 ),
                               ),
                             ),
-                            DataCell(Text(item['category'] ?? '-')),
+                            // Memformat tampilan kategori agar lebih rapi (menghilangkan underscore)
+                            DataCell(
+                              Text(
+                                (item['category'] ?? '-')
+                                    .toString()
+                                    .replaceAll('_', ' ')
+                                    .toUpperCase(),
+                              ),
+                            ),
                             DataCell(
                               isCash
                                   ? const Icon(
@@ -352,7 +480,27 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                     )
                                   : const SizedBox(),
                             ),
-                            DataCell(Text(isActive ? "Active" : "Inactive")),
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? Colors.green.shade50
+                                      : Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isActive ? "Active" : "Inactive",
+                                  style: TextStyle(
+                                    color: isActive ? Colors.green : Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
                             DataCell(
                               Row(
                                 children: [
@@ -361,6 +509,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                       Icons.edit,
                                       color: Colors.orange,
                                     ),
+                                    tooltip: 'Edit Akun',
                                     onPressed: () =>
                                         _showFormDialog(item: item),
                                   ),
@@ -369,6 +518,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                       Icons.delete,
                                       color: Colors.red,
                                     ),
+                                    tooltip: 'Hapus Akun',
                                     onPressed: () => _deleteItem(item['id']),
                                   ),
                                 ],

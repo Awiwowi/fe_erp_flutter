@@ -3,6 +3,7 @@ import 'package:fe_erp_flutter/screens/accounting_reports_page.dart';
 import 'package:fe_erp_flutter/screens/bom_page.dart';
 import 'package:fe_erp_flutter/screens/chart_of_accounts_page.dart';
 import 'package:fe_erp_flutter/screens/customers_page.dart';
+import 'package:fe_erp_flutter/screens/delivery_orders_page.dart';
 import 'package:fe_erp_flutter/screens/goods_movement_report_page.dart';
 import 'package:fe_erp_flutter/screens/goods_receipts_page.dart';
 import 'package:fe_erp_flutter/screens/initial_balance_page.dart';
@@ -20,15 +21,16 @@ import 'package:fe_erp_flutter/screens/raw_material_stock_adjustment_page.dart';
 import 'package:fe_erp_flutter/screens/raw_material_stock_in_page.dart';
 import 'package:fe_erp_flutter/screens/raw_material_stock_out_page.dart';
 import 'package:fe_erp_flutter/screens/raw_materials_page.dart';
+import 'package:fe_erp_flutter/screens/sales_invoices_page.dart';
 import 'package:fe_erp_flutter/screens/sales_orders_page.dart';
 import 'package:fe_erp_flutter/screens/sales_quotations_page.dart';
+import 'package:fe_erp_flutter/screens/sales_returns_page.dart';
 import 'package:fe_erp_flutter/screens/stock_adjustment_page.dart';
 import 'package:fe_erp_flutter/screens/stock_initial_page.dart';
 import 'package:fe_erp_flutter/screens/stock_movements_page.dart';
 import 'package:fe_erp_flutter/screens/stock_outs_page.dart';
 import 'package:fe_erp_flutter/screens/stock_transfer_page.dart';
 import 'package:fe_erp_flutter/screens/supplier_purchase_report_page.dart';
-import 'package:fe_erp_flutter/screens/work_orders_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Wajib Import
 import '../widgets/sidebar.dart';
@@ -238,8 +240,6 @@ class _DashboardPageState extends State<DashboardPage> {
         return const SalesQuotationsPage();
       case 32:
         return const SalesOrdersPage();
-      case 33:
-        return const WorkOrdersPage();
       case 34:
         return const InitialBalancePage();
       case 35:
@@ -248,6 +248,12 @@ class _DashboardPageState extends State<DashboardPage> {
         return const AccountPayablesPage();
       case 37:
         return const AccountingReportsPage();
+      case 38:
+        return const DeliveryOrdersPage();
+      case 39:
+        return const SalesInvoicesPage();
+      case 40:
+        return const SalesReturnsPage();
       case 98:
         return const Center(child: Text("Settings Page"));
       default:

@@ -169,8 +169,9 @@ class _SidebarState extends State<Sidebar> {
                   children: [
                     _subMenuItem(30, "Penawaran Penjualan"),
                     _subMenuItem(32, "Sales Orders"),
-                    _subMenuItem(33, "Work Order"),
-                    _subMenuItem(70, "Surat Jalan (DO)"),
+                    _subMenuItem(38, "Delivery Orders"),
+                    _subMenuItem(39, "Sales Invoices"),
+                    _subMenuItem(40, "Sales Returns"),
                   ],
                 ),
 

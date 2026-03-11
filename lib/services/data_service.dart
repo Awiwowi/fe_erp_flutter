@@ -275,7 +275,7 @@ class DataService {
   Future<List<dynamic>> getCustomers() async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/customers'),
+        Uri.parse('${AuthService.baseUrl}/customer'), // Diubah jadi /customer
         headers: _headers(),
       );
       if (response.statusCode == 200) {
@@ -294,7 +294,7 @@ class DataService {
   Future<bool> createCustomer(Map<String, dynamic> data) async {
     try {
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/customers'),
+        Uri.parse('${AuthService.baseUrl}/customer'), // Diubah jadi /customer
         headers: _headers(),
         body: jsonEncode(data),
       );
@@ -308,7 +308,9 @@ class DataService {
   Future<bool> updateCustomer(int id, Map<String, dynamic> data) async {
     try {
       final response = await http.put(
-        Uri.parse('${AuthService.baseUrl}/customers/$id'),
+        Uri.parse(
+          '${AuthService.baseUrl}/customer/$id',
+        ), // Diubah jadi /customer
         headers: _headers(),
         body: jsonEncode(data),
       );
@@ -322,7 +324,9 @@ class DataService {
   Future<bool> deleteCustomer(int id) async {
     try {
       final response = await http.delete(
-        Uri.parse('${AuthService.baseUrl}/customers/$id'),
+        Uri.parse(
+          '${AuthService.baseUrl}/customer/$id',
+        ), // Diubah jadi /customer
         headers: _headers(),
       );
       return response.statusCode == 200;
@@ -2081,60 +2085,311 @@ class DataService {
     }
   }
 
-  // --- WORK ORDERS (PERINTAH KERJA) ---
-
-  // Mengambil daftar Work Orders dari API
-  Future<List<dynamic>> getWorkOrders() async {
+  // Delivery Orders
+  // 1. Dapatkan daftar DO
+  Future<List<dynamic>> getDeliveryOrders() async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/work-orders'),
+        Uri.parse('${AuthService.baseUrl}/delivery-orders'),
         headers: _headers(),
       );
+
       if (response.statusCode == 200) {
-        var jsonRes = jsonDecode(response.body);
-        // Bisa jsonRes berupa List, atau jsonRes['data'] (jika backend membungkus datanya)
-        if (jsonRes is List) return jsonRes;
-        if (jsonRes['data'] != null) return jsonRes['data'];
+        var json = jsonDecode(response.body);
+
+        // 🔥 PERBAIKAN PENGECEKAN TIPE DATA
+        if (json['data'] is Map && json['data'].containsKey('data')) {
+          // Jika pakai paginate()
+          return List<dynamic>.from(json['data']['data']);
+        } else if (json['data'] is List) {
+          // Jika pakai get()
+          return List<dynamic>.from(json['data']);
+        }
       }
       return [];
     } catch (e) {
-      print("Get Work Orders Error: $e");
+      print("Error Get DO: $e"); // Akan muncul di terminal jika masih ada error
       return [];
     }
   }
 
-  Future<bool> updateWorkOrder(int id, Map<String, dynamic> data) async {
+  // 2. Dapatkan detail DO
+  Future<Map<String, dynamic>?> getDeliveryOrderDetail(int id) async {
     try {
-      final response = await http.put(
-        Uri.parse('${AuthService.baseUrl}/work-orders/$id'),
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/delivery-orders/$id'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 3. Buat DO Baru
+  Future<bool> createDeliveryOrder(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/delivery-orders'),
         headers: _headers(),
         body: jsonEncode(data),
       );
-
-      var resData = jsonDecode(response.body);
-
-      // Jika status gagal dari Laravel (seperti exception kurang stok)
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        if (resData['message'] != null) {
-          throw Exception(
-            resData['message'],
-          ); // Lempar pesan error ke UI Flutter
-        }
-        return false;
-      }
-
-      return true;
+      return response.statusCode == 201 || response.statusCode == 200;
     } catch (e) {
-      // Melempar pesan error ke atas agar ditangkap oleh UI (SnackBar merah)
-      throw Exception(e.toString());
+      print("Error Create DO: $e");
+      return false;
     }
   }
 
-  // Delete Work Order
-  Future<bool> deleteWorkOrder(int id) async {
+  // 4. Ubah status DO jadi Shipped (Dikirim) -> [PERBAIKAN ROUTE: /send]
+  Future<bool> sendDeliveryOrder(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/delivery-orders/$id/send'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode != 200) {
+        print("Gagal Send DO: ${response.body}");
+      }
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Send DO: $e");
+      return false;
+    }
+  }
+
+  // 5. Ubah status DO jadi Received (Diterima)
+  Future<bool> confirmReceivedDO(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '${AuthService.baseUrl}/delivery-orders/$id/confirm-received',
+        ),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Confirm Received DO: $e");
+      return false;
+    }
+  }
+
+  // 6. Hapus DO (Soft Delete)
+  Future<bool> deleteDeliveryOrder(int id) async {
     try {
       final response = await http.delete(
-        Uri.parse('${AuthService.baseUrl}/work-orders/$id'),
+        Uri.parse('${AuthService.baseUrl}/delivery-orders/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Delete DO: $e");
+      return false;
+    }
+  }
+
+  // 7. AMBIL OUTSTANDING ITEMS DARI SALES ORDER (Penting untuk Form Buat DO) -> [PERBAIKAN ROUTE: /outstanding]
+  Future<Map<String, dynamic>?> getSalesOrderOutstanding(int soId) async {
+    try {
+      // Endpoint ini berada di SalesOrderController Laravel kamu
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-orders/$soId/outstanding'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print("Error Get Outstanding SO: $e");
+      return null;
+    }
+  }
+
+  // --- FUNGSI BYPASS OUTSTANDING (DIHITUNG OLEH FLUTTER) ---
+  Future<List<Map<String, dynamic>>> getManualOutstandingItems(
+    int salesOrderId,
+  ) async {
+    try {
+      // Kita Tembak API Detail SO biasa, BUKAN API Outstanding
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-orders/$salesOrderId'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        var data = json['data'];
+
+        if (data != null && data['items'] != null) {
+          List<dynamic> items = data['items'];
+          List<Map<String, dynamic>> outstandingItems = [];
+
+          for (var item in items) {
+            // Parsing nilai dengan aman
+            double qtyPesanan =
+                double.tryParse(item['qty_pesanan']?.toString() ?? '0') ?? 0;
+            double qtyShipped =
+                double.tryParse(item['qty_shipped']?.toString() ?? '0') ?? 0;
+
+            // FLUTTER YANG MENGHITUNG SISA
+            double sisa = qtyPesanan - qtyShipped;
+
+            // Hanya masukkan ke list jika barang benar-benar masih ada sisa
+            if (sisa > 0) {
+              outstandingItems.add({
+                'sales_order_item_id': item['id'],
+                'product_id': item['product_id'],
+                'product_name': item['product'] != null
+                    ? item['product']['name']
+                    : 'Unknown',
+                'qty_pesanan': qtyPesanan,
+                'qty_terkirim': qtyShipped,
+                'qty_sisa': sisa, // Nilai ini yang akan jadi patokan input
+              });
+            }
+          }
+          return outstandingItems; // Kembalikan list yang sudah difilter Flutter
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Manual Outstanding: $e");
+      return [];
+    }
+  }
+
+  // Sales Invoices
+  Future<List<dynamic>> getSalesInvoices() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['data'] != null && json['data']['data'] != null) {
+          return json['data']['data'];
+        }
+        return json['data'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getSalesInvoiceDetail(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices/$id'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> createSalesInvoice(
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan jaringan.'};
+    }
+  }
+
+  Future<bool> deleteSalesInvoice(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices/$id'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Sales Retur
+  Future<List<dynamic>> getSalesReturns() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-returns'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        // Pengecekan aman untuk pagination Laravel
+        if (json['data'] is Map && json['data'].containsKey('data')) {
+          return List<dynamic>.from(json['data']['data']);
+        } else if (json['data'] is List) {
+          return List<dynamic>.from(json['data']);
+        } else if (json is List) {
+          return json;
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Error Get Sales Returns: $e");
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getSalesReturnDetail(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-returns/$id'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<bool> createSalesReturn(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-returns'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Error Create Sales Return: $e");
+      return false;
+    }
+  }
+
+  Future<bool> updateSalesReturnStatus(int id, String status) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/sales-returns/$id'),
+        headers: _headers(),
+        body: jsonEncode({"status": status}), // e.g., approved, rejected
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteSalesReturn(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}/sales-returns/$id'),
         headers: _headers(),
       );
       return response.statusCode == 200;
@@ -2458,17 +2713,25 @@ class DataService {
     }
   }
 
-  // 3. Membuat Hutang (AP) dari TTF
-  Future<bool> createAccountPayableFromTTF(int invoiceReceiptId) async {
+  // 3. Membuat Hutang (AP) dari TTF (Update dengan COA)
+  Future<bool> createAccountPayableFromTTF(
+    int invoiceReceiptId,
+    int payableAccountId,
+    int inventoryAccountId,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse(
           '${AuthService.baseUrl}/account-payables/from-invoice-receipt',
         ),
         headers: _headers(),
-        body: jsonEncode({"invoice_receipt_id": invoiceReceiptId}),
+        body: jsonEncode({
+          "invoice_receipt_id": invoiceReceiptId,
+          "payable_account_id": payableAccountId,
+          "inventory_account_id": inventoryAccountId,
+        }),
       );
-      // Backend mungkin mengembalikan 201 Created atau 200 OK
+      // Backend mengembalikan 201 Created saat sukses
       return response.statusCode == 201 || response.statusCode == 200;
     } catch (e) {
       print("Error Create AP from TTF: $e");
@@ -2477,39 +2740,52 @@ class DataService {
   }
 
   // Jurnal $ Buku Besar
-  // 1. Mengambil riwayat Jurnal Umum
-  Future<List<dynamic>> getJournalEntries() async {
+  // 1. Ambil Buku Besar (Sesuai fungsi detail() di PHP)
+  Future<Map<String, dynamic>?> getLedgerDetail(
+    int accountId,
+    String startDate,
+    String endDate,
+  ) async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/journal-entries'), 
-        headers: _headers()
+        Uri.parse(
+          '${AuthService.baseUrl}/ledger/detail/$accountId?start_date=$startDate&end_date=$endDate',
+        ),
+        headers: _headers(),
       );
       if (response.statusCode == 200) {
-        var jsonRes = jsonDecode(response.body);
-        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+        return jsonDecode(
+          response.body,
+        ); // Mengembalikan utuh 1 object dari PHP
       }
-      return [];
+      return null;
     } catch (e) {
-      print("Error Get Journal Entries: $e");
-      return [];
+      print("Error Get Ledger: $e");
+      return null;
     }
   }
 
-  // 2. Mengambil Laporan Buku Besar (Berdasarkan Akun & Tanggal)
-  Future<List<dynamic>> getLedgerReport(int accountId, String startDate, String endDate) async {
+  // 2. Ambil Neraca Saldo (Sesuai fungsi trialBalance() di PHP)
+  Future<Map<String, dynamic>?> getTrialBalance(
+    String startDate,
+    String endDate,
+  ) async {
     try {
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/ledger-report?account_id=$accountId&start_date=$startDate&end_date=$endDate'), 
-        headers: _headers()
+        Uri.parse(
+          '${AuthService.baseUrl}/ledger/trial-balance?start_date=$startDate&end_date=$endDate',
+        ),
+        headers: _headers(),
       );
       if (response.statusCode == 200) {
-        var jsonRes = jsonDecode(response.body);
-        return jsonRes is List ? jsonRes : (jsonRes['data'] ?? []);
+        return jsonDecode(
+          response.body,
+        ); // Mengembalikan utuh 1 object dari PHP
       }
-      return [];
+      return null;
     } catch (e) {
-      print("Error Get Ledger Report: $e");
-      return [];
+      print("Error Get Trial Balance: $e");
+      return null;
     }
   }
 
