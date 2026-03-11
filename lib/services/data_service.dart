@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class DataService {
   // User Management
@@ -2262,6 +2264,19 @@ class DataService {
   }
 
   // Sales Invoices
+  // ============================================================
+  // BAGIAN SALES INVOICE — tambahkan ke dalam class DataService
+  // File: lib/services/data_service.dart
+  //
+  // Import yang dibutuhkan (tambahkan ke bagian atas data_service.dart):
+  //   import 'dart:convert';
+  //   import 'package:http/http.dart' as http;
+  // ============================================================
+
+  // ----------------------------------------------------------
+  // GET: Daftar semua Sales Invoice
+  // Endpoint: GET /api/v1/sales-invoices
+  // ----------------------------------------------------------
   Future<List<dynamic>> getSalesInvoices() async {
     try {
       final response = await http.get(
@@ -2269,8 +2284,9 @@ class DataService {
         headers: _headers(),
       );
       if (response.statusCode == 200) {
-        var json = jsonDecode(response.body);
-        if (json['data'] != null && json['data']['data'] != null) {
+        final json = jsonDecode(response.body);
+        // Handle Laravel paginate: { data: { data: [...] } }
+        if (json['data'] is Map && json['data']['data'] != null) {
           return json['data']['data'];
         }
         return json['data'] ?? [];
@@ -2287,13 +2303,68 @@ class DataService {
         Uri.parse('${AuthService.baseUrl}/sales-invoices/$id'),
         headers: _headers(),
       );
-      if (response.statusCode == 200) return jsonDecode(response.body);
+
+      print('=== getSalesInvoiceDetail status: ${response.statusCode}');
+      print(
+        '=== body preview: ${response.body.substring(0, response.body.length.clamp(0, 300))}',
+      );
+
+      if (response.body.isEmpty) return null;
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+
+      // Laravel 500 — kemungkinan karena tabel invoice_installments belum ada
+      // Fallback: ambil dari list index, cari by id
+      if (response.statusCode == 500) {
+        print('=== show() gagal 500, fallback ke list index...');
+        return await _getSalesInvoiceFromList(id);
+      }
+
       return null;
     } catch (e) {
+      print('=== getSalesInvoiceDetail error: $e');
+      return await _getSalesInvoiceFromList(id);
+    }
+  }
+
+  // Fallback: ambil dari index, filter by id
+  Future<Map<String, dynamic>?> _getSalesInvoiceFromList(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices?per_page=999'),
+        headers: _headers(),
+      );
+      if (response.statusCode != 200) return null;
+
+      final json = jsonDecode(response.body);
+      List<dynamic> list = [];
+      if (json['data'] is Map && json['data']['data'] != null) {
+        list = json['data']['data'];
+      } else if (json['data'] is List) {
+        list = json['data'];
+      }
+
+      final found = list.firstWhere(
+        (item) => item['id'] == id,
+        orElse: () => null,
+      );
+
+      if (found == null) return null;
+      return {'success': true, 'data': found};
+    } catch (e) {
+      print('=== _getSalesInvoiceFromList error: $e');
       return null;
     }
   }
 
+  // ----------------------------------------------------------
+  // POST: Buat Sales Invoice baru
+  // Endpoint: POST /api/v1/sales-invoices
+  // Body: { sales_order_id, payment_type: 'full'|'dp', dp_amount? }
+  // Return: Map berisi { success, message, data }
+  // ----------------------------------------------------------
   Future<Map<String, dynamic>?> createSalesInvoice(
     Map<String, dynamic> data,
   ) async {
@@ -2309,6 +2380,30 @@ class DataService {
     }
   }
 
+  // ----------------------------------------------------------
+  // PUT: Update Invoice (hanya due_date & notes, jika belum paid)
+  // Endpoint: PUT /api/v1/sales-invoices/{id}
+  // ----------------------------------------------------------
+  Future<Map<String, dynamic>?> updateSalesInvoice(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices/$id'),
+        headers: _headers(),
+        body: jsonEncode(data),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan jaringan.'};
+    }
+  }
+
+  // ----------------------------------------------------------
+  // DELETE: Soft-delete Invoice (hanya jika belum paid)
+  // Endpoint: DELETE /api/v1/sales-invoices/{id}
+  // ----------------------------------------------------------
   Future<bool> deleteSalesInvoice(int id) async {
     try {
       final response = await http.delete(
@@ -2319,6 +2414,97 @@ class DataService {
     } catch (e) {
       return false;
     }
+  }
+
+  // ----------------------------------------------------------
+  // POST: Restore Invoice dari sampah
+  // Endpoint: POST /api/v1/sales-invoices/{id}/restore
+  // ----------------------------------------------------------
+  Future<bool> restoreSalesInvoice(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices/$id/restore'),
+        headers: _headers(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ----------------------------------------------------------
+  // POST: Bayar cicilan
+  // Endpoint: POST /api/v1/sales-invoices/{id}/installment
+  // Body: { amount, notes? }
+  // ----------------------------------------------------------
+  Future<Map<String, dynamic>?> payInstallment(
+    int id,
+    double amount, {
+    String? notes,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices/$id/installment'),
+        headers: _headers(),
+        body: jsonEncode({
+          'amount': amount,
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+        }),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan jaringan.'};
+    }
+  }
+
+  // ----------------------------------------------------------
+  // POST: Lunasi sisa tagihan sekaligus
+  // Endpoint: POST /api/v1/sales-invoices/{id}/pay-remainder
+  // ----------------------------------------------------------
+  Future<Map<String, dynamic>?> payRemainderInvoice(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices/$id/pay-remainder'),
+        headers: _headers(),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan jaringan.'};
+    }
+  }
+
+  // ----------------------------------------------------------
+  // GET: Invoice yang belum lunas (pending payments)
+  // Endpoint: GET /api/v1/sales-invoices/pending-payments
+  // ----------------------------------------------------------
+  Future<List<dynamic>> getPendingInvoices() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/sales-invoices/pending-payments'),
+        headers: _headers(),
+      );
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return json['data'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ----------------------------------------------------------
+  // HELPER: updateSalesInvoiceStatus
+  // Dipanggil dari _changeStatus di halaman.
+  // Karena Laravel tidak punya endpoint ubah status manual,
+  // method ini mengarahkan ke pay-remainder jika target = 'paid'.
+  // ----------------------------------------------------------
+  Future<bool> updateSalesInvoiceStatus(int id, String status) async {
+    if (status == 'paid') {
+      final res = await payRemainderInvoice(id);
+      return res?['success'] == true;
+    }
+    return false;
   }
 
   // Sales Retur
