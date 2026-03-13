@@ -33,7 +33,6 @@ class _SidebarState extends State<Sidebar> {
       _isPersediaanExpanded = true;
     }
     if (widget.selectedIndex == 9) {
-      // Index 9 untuk PR
       _isPembelianExpanded = true;
     }
   }
@@ -42,15 +41,13 @@ class _SidebarState extends State<Sidebar> {
   Widget build(BuildContext context) {
     return Container(
       width: 280,
-      color: AppColors.black, // Warna Hitam Full Background
+      color: AppColors.black,
       child: Column(
         children: [
           // 1. AREA LOGO (DIBUNGKUS SAFEAREA)
-          // SafeArea otomatis mendeteksi tinggi status bar & mendorong konten ke bawah
           SafeArea(
-            bottom: false, // Hanya peduli bagian atas
+            bottom: false,
             child: Container(
-              // Padding tambahan 10px dari batas aman agar sejajar Header
               padding: const EdgeInsets.only(
                 top: 10,
                 bottom: 15,
@@ -64,21 +61,14 @@ class _SidebarState extends State<Sidebar> {
               ),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.grid_view_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                  Image.asset(
+                    'assets/images/logo_admk.png',
+                    width: 36,
+                    height: 36,
                   ),
                   const SizedBox(width: 12),
                   const Text(
-                    "TailAdmin",
+                    "HydroCore",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -172,6 +162,7 @@ class _SidebarState extends State<Sidebar> {
                     _subMenuItem(38, "Delivery Orders"),
                     _subMenuItem(39, "Sales Invoices"),
                     _subMenuItem(40, "Sales Returns"),
+                    _subMenuItem(41, "Laporan Sales"),
                   ],
                 ),
 

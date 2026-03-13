@@ -145,6 +145,7 @@ class _PayablePaymentsPageState extends State<PayablePaymentsPage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -462,8 +463,9 @@ class _PaymentFormDialogState extends State<_PaymentFormDialog> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         decoration: const InputDecoration(
-                          labelText: "Metode Pembayaran",
+                          labelText: "Metode",
                           border: OutlineInputBorder(),
                         ),
                         value: _selectedMethod,

@@ -2130,17 +2130,26 @@ class DataService {
   }
 
   // 3. Buat DO Baru
-  Future<bool> createDeliveryOrder(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>?> createDeliveryOrder(
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('${AuthService.baseUrl}/delivery-orders'),
         headers: _headers(),
         body: jsonEncode(data),
       );
-      return response.statusCode == 201 || response.statusCode == 200;
+
+      // Jika berhasil (201 Created atau 200 OK)
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return jsonDecode(response.body); // Kembalikan datanya (mengandung ID)
+      } else {
+        print("Error Create DO API: ${response.body}");
+        return null;
+      }
     } catch (e) {
-      print("Error Create DO: $e");
-      return false;
+      print("Error Exception Create DO: $e");
+      return null;
     }
   }
 
@@ -2507,7 +2516,10 @@ class DataService {
     return false;
   }
 
-  // Sales Retur
+  // ==========================================
+  // SALES RETURNS (RETUR PENJUALAN)
+  // ==========================================
+
   Future<List<dynamic>> getSalesReturns() async {
     try {
       final response = await http.get(
@@ -2516,18 +2528,10 @@ class DataService {
       );
       if (response.statusCode == 200) {
         var json = jsonDecode(response.body);
-        // Pengecekan aman untuk pagination Laravel
-        if (json['data'] is Map && json['data'].containsKey('data')) {
-          return List<dynamic>.from(json['data']['data']);
-        } else if (json['data'] is List) {
-          return List<dynamic>.from(json['data']);
-        } else if (json is List) {
-          return json;
-        }
+        if (json['data'] is List) return List<dynamic>.from(json['data']);
       }
       return [];
     } catch (e) {
-      print("Error Get Sales Returns: $e");
       return [];
     }
   }
@@ -2554,20 +2558,6 @@ class DataService {
       );
       return response.statusCode == 201 || response.statusCode == 200;
     } catch (e) {
-      print("Error Create Sales Return: $e");
-      return false;
-    }
-  }
-
-  Future<bool> updateSalesReturnStatus(int id, String status) async {
-    try {
-      final response = await http.put(
-        Uri.parse('${AuthService.baseUrl}/sales-returns/$id'),
-        headers: _headers(),
-        body: jsonEncode({"status": status}), // e.g., approved, rejected
-      );
-      return response.statusCode == 200;
-    } catch (e) {
       return false;
     }
   }
@@ -2581,6 +2571,114 @@ class DataService {
       return response.statusCode == 200;
     } catch (e) {
       return false;
+    }
+  }
+
+  // Sales Reports
+  // ==========================================
+  // SALES REPORTS (LAPORAN PENJUALAN)
+  // ==========================================
+
+  Future<Map<String, dynamic>?> getSalesResume({
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      final params = {
+        if (startDate != null) 'start_date': startDate,
+        if (endDate != null) 'end_date': endDate,
+      };
+      final uri = Uri.parse(
+        '${AuthService.baseUrl}/sales-reports/resume',
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
+      final response = await http.get(uri, headers: _headers());
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        return json['data'];
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<List<dynamic>> getSalesReportByProduct({
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      final params = {
+        if (startDate != null) 'start_date': startDate,
+        if (endDate != null) 'end_date': endDate,
+      };
+      final uri = Uri.parse(
+        '${AuthService.baseUrl}/sales-reports/by-product',
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
+      final response = await http.get(uri, headers: _headers());
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['data'] is List) return List<dynamic>.from(json['data']);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // payment_status: null | 'paid' | 'unpaid'
+  Future<List<dynamic>> getSalesReportByCustomer({
+    String? startDate,
+    String? endDate,
+    String? paymentStatus,
+  }) async {
+    try {
+      final params = {
+        if (startDate != null) 'start_date': startDate,
+        if (endDate != null) 'end_date': endDate,
+        if (paymentStatus != null) 'payment_status': paymentStatus,
+      };
+      final uri = Uri.parse(
+        '${AuthService.baseUrl}/sales-reports/by-customer',
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
+      final response = await http.get(uri, headers: _headers());
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['data'] is List) return List<dynamic>.from(json['data']);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getSalesMonthlyTrend({String? year}) async {
+    try {
+      final params = {if (year != null) 'year': year};
+      final uri = Uri.parse(
+        '${AuthService.baseUrl}/sales-reports/monthly-trend',
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
+      final response = await http.get(uri, headers: _headers());
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['data'] is List) return List<dynamic>.from(json['data']);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getSalesAgingReport() async {
+    try {
+      final uri = Uri.parse('${AuthService.baseUrl}/sales-reports/aging');
+      final response = await http.get(uri, headers: _headers());
+      if (response.statusCode == 200) {
+        var json = jsonDecode(response.body);
+        if (json['data'] is List) return List<dynamic>.from(json['data']);
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 

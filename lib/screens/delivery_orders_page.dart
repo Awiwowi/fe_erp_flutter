@@ -69,7 +69,7 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Referensi SPK: ${detail['sales_order']?['no_spk'] ?? '-'}",
+                  "Referensi SPK: ${detail['sales_order']?['no_spk'] ?? detail['no_spk'] ?? '-'}",
                 ),
                 Text("Customer: ${detail['customer']?['name'] ?? '-'}"),
                 Text("Gudang Asal: ${detail['warehouse']?['name'] ?? '-'}"),
@@ -96,7 +96,10 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                           item['product']?['nama'] ??
                           item['product']?['name'] ??
                           '-';
-                      String qty = item['qty_realisasi']?.toString() ?? '0';
+                      String qty =
+                          item['qty_realisasi']?.toString() ??
+                          item['qty']?.toString() ??
+                          '0';
                       return DataRow(
                         cells: [
                           DataCell(Text(prodName)),
@@ -127,7 +130,7 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
     );
   }
 
-  // --- MODAL BUAT DO BARU DARI SO ---
+  // --- MODAL BUAT DO BARU ---
   void _showCreateDialog() async {
     showDialog(
       context: context,
@@ -135,23 +138,20 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
       builder: (c) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Ambil Data Master yang dibutuhkan
     var warehouses = await DataService().getWarehouses();
     var allSOs = await DataService().getSalesOrders();
 
-    // Filter SO: Hanya ambil yang berstatus approved, in progress, atau partial
+    // Sesuai instruksi, tampilkan semua SPK asalkan bukan canceled/draft
     var validSOs = allSOs.where((so) {
       String status = (so['status'] ?? '').toString().toLowerCase();
-      return status == 'approved' ||
-          status == 'in progress' ||
-          status == 'processing' ||
-          status == 'partial';
+      return status != 'canceled' && status != 'draft';
     }).toList();
 
     if (!mounted) return;
     Navigator.pop(context);
 
     int? selectedSoId;
+    String? selectedSoNoSpk; // <-- Menyimpan no_spk untuk dikirim ke backend
     int? selectedCustomerId;
     int? selectedWarehouseId;
     final dateCtrl = TextEditingController(
@@ -168,40 +168,65 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            // FUNGSI INI YANG DIPERBAIKI (Menggunakan by-pass hitung di Flutter)
             void loadOutstandingItems(int soId) async {
               setStateDialog(() => isLoadingItems = true);
+              var res = await DataService().getSalesOrderOutstanding(soId);
 
-              // Tembak fungsi manual yang kita buat di DataService
-              var itemsList = await DataService().getManualOutstandingItems(
-                soId,
-              );
+              List<dynamic> items = [];
+              if (res != null) {
+                if (res['data'] is Map && res['data']['items'] != null) {
+                  items = res['data']['items'];
+                } else if (res['data'] is List) {
+                  items = res['data'];
+                } else if (res.containsKey('items') && res['items'] is List) {
+                  items = res['items'];
+                }
+              }
 
               setStateDialog(() {
-                if (itemsList.isNotEmpty) {
-                  outstandingItems = itemsList.map((item) {
-                    return {
-                      'sales_order_item_id': item['sales_order_item_id'],
-                      'product_id': item['product_id'],
-                      'product_name': item['product_name'],
-                      'qty_sisa':
-                          double.tryParse(item['qty_sisa'].toString()) ?? 0,
-                      'qtyCtrl': TextEditingController(
-                        text: item['qty_sisa'].toString(),
-                      ),
-                      'selected': true, // Checkbox untuk dikirim atau tidak
-                    };
-                  }).toList();
-                } else {
-                  outstandingItems = [];
-                }
+                outstandingItems = items.map((item) {
+                  int soItemId = item['sales_order_item_id'] ?? item['id'] ?? 0;
+                  int prodId = item['product_id'] ?? 0;
+                  String prodName =
+                      item['product_name'] ??
+                      item['product']?['nama'] ??
+                      item['product']?['name'] ??
+                      'Produk';
+
+                  double qtyTotal =
+                      double.tryParse(item['qty']?.toString() ?? '0') ?? 0;
+                  double qtyKirim =
+                      double.tryParse(
+                        item['qty_dikirim']?.toString() ??
+                            item['qty_realisasi']?.toString() ??
+                            '0',
+                      ) ??
+                      0;
+                  double qtySisa =
+                      double.tryParse(item['qty_sisa']?.toString() ?? '0') ??
+                      (qtyTotal - qtyKirim);
+                  if (qtySisa <= 0 && qtyTotal > 0 && item['qty_sisa'] == null)
+                    qtySisa = qtyTotal;
+
+                  return {
+                    'sales_order_item_id': soItemId,
+                    'product_id': prodId,
+                    'product_name': prodName,
+                    'qty_sisa': qtySisa,
+                    'qtyCtrl': TextEditingController(
+                      text: qtySisa > 0 ? qtySisa.toString() : '0',
+                    ),
+                    'selected': qtySisa > 0,
+                  };
+                }).toList(); // Tampilkan semua barang
+
                 isLoadingItems = false;
               });
             }
 
             return AlertDialog(
               title: const Text(
-                "Buat Surat Jalan",
+                "Kirim Barang (Surat Jalan)",
                 style: TextStyle(color: AppColors.primary),
               ),
               content: ConstrainedBox(
@@ -214,28 +239,6 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Peringatan agar user paham batasan PHP
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        margin: const EdgeInsets.all(15),
-                        color: Colors.yellow.shade100,
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.orange,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                "Jika ingin mengirim sebagian barang (cicil), usahakan langsung gunakan tombol 'Simpan & Kirim'. Menyimpan sebagai Draft akan mengganggu kalkulasi sisa barang.",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
                       DropdownButtonFormField<int>(
                         decoration: const InputDecoration(
                           labelText: "Pilih Sales Order (SPK) *",
@@ -258,6 +261,8 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                               (element) => element['id'] == val,
                             );
                             selectedCustomerId = selectedSo['customer_id'];
+                            selectedSoNoSpk =
+                                selectedSo['no_spk']; // Ambil SPK-nya
                           });
                           if (val != null) loadOutstandingItems(val);
                         },
@@ -298,7 +303,7 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
 
                       const Divider(height: 30, thickness: 2),
                       const Text(
-                        "Barang yang belum dikirim (Outstanding):",
+                        "Barang yang akan dikirim:",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 10),
@@ -312,8 +317,8 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                         )
                       else if (outstandingItems.isEmpty)
                         const Text(
-                          "Semua barang pada SPK ini sudah terkirim penuh.",
-                          style: TextStyle(color: Colors.green),
+                          "Tidak ada data barang.",
+                          style: TextStyle(color: Colors.grey),
                         )
                       else
                         ...outstandingItems.map((item) {
@@ -342,7 +347,7 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                                           ),
                                         ),
                                         Text(
-                                          "Sisa harus dikirim: ${item['qty_sisa']}",
+                                          "Sisa Qty: ${item['qty_sisa']}",
                                           style: const TextStyle(
                                             color: Colors.grey,
                                             fontSize: 12,
@@ -377,40 +382,27 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text("Batal"),
                 ),
-                if (outstandingItems.isNotEmpty) ...[
-                  OutlinedButton(
-                    onPressed: () => _submitDO(
-                      context,
-                      'draft',
-                      selectedSoId,
-                      selectedCustomerId,
-                      selectedWarehouseId,
-                      dateCtrl.text,
-                      notesCtrl.text,
-                      outstandingItems,
-                    ),
-                    child: const Text("Simpan Draft"),
-                  ),
-                  ElevatedButton(
+                if (outstandingItems.isNotEmpty)
+                  ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                     ),
                     onPressed: () => _submitDO(
                       context,
-                      'shipped',
                       selectedSoId,
+                      selectedSoNoSpk,
                       selectedCustomerId,
                       selectedWarehouseId,
                       dateCtrl.text,
                       notesCtrl.text,
                       outstandingItems,
                     ),
-                    child: const Text(
-                      "Simpan & Kirim (Potong Stok)",
+                    icon: const Icon(Icons.send, color: Colors.white, size: 16),
+                    label: const Text(
+                      "Simpan & Kirim Barang",
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
-                ],
               ],
             );
           },
@@ -419,17 +411,21 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
     );
   }
 
+  // --- LOGIKA SIMPAN & POTONG STOK ---
   void _submitDO(
     BuildContext dialogContext,
-    String status,
     int? soId,
+    String? soNoSpk,
     int? customerId,
     int? warehouseId,
     String tanggal,
     String notes,
     List<Map<String, dynamic>> allItems,
   ) async {
-    if (soId == null || warehouseId == null || tanggal.isEmpty) {
+    if (soId == null ||
+        soNoSpk == null ||
+        warehouseId == null ||
+        tanggal.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Lengkapi SPK, Gudang, dan Tanggal!")),
       );
@@ -444,17 +440,12 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
       return;
     }
 
-    // Validasi Qty dan Parsing
     List<Map<String, dynamic>> payloadItems = [];
     for (var i in selectedItems) {
       double inputQty = double.tryParse(i['qtyCtrl'].text) ?? 0;
-      if (inputQty <= 0 || inputQty > i['qty_sisa']) {
+      if (inputQty <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Qty ${i['product_name']} tidak valid atau melebihi sisa pesanan (${i['qty_sisa']})!",
-            ),
-          ),
+          SnackBar(content: Text("Qty ${i['product_name']} tidak boleh 0!")),
         );
         return;
       }
@@ -465,42 +456,63 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
       });
     }
 
+    // 🔥 PAYLOAD INI MENGIRIMKAN KEDUANYA (sales_order_id DAN no_spk)
     Map<String, dynamic> payload = {
-      "sales_order_id": soId,
+      "sales_order_id": soId, // Memuaskan validasi backend Laravel
+      "no_spk": soNoSpk, // Menyiapkan SPK untuk disave
       "customer_id": customerId,
       "warehouse_id": warehouseId,
       "tanggal": tanggal,
       "notes": notes,
-      "status": status,
+      "status": "draft",
       "items": payloadItems,
     };
 
     Navigator.pop(dialogContext); // Tutup modal
     setState(() => _isLoading = true);
 
-    bool success = await DataService().createDeliveryOrder(payload);
+    var result = await DataService().createDeliveryOrder(payload);
     if (!mounted) return;
 
-    if (success) {
+    if (result != null) {
+      // SETELAH DRAFT BERHASIL, LANGSUNG KITA "SEND" AGAR STOK TERPOTONG
+      int newDoId = result['data']?['id'] ?? result['id'] ?? 0;
+      if (newDoId != 0) {
+        bool isSent = await DataService().sendDeliveryOrder(newDoId);
+        if (isSent) {
+          _fetchData();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Surat Jalan berhasil dibuat dan Stok telah dipotong!",
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+          return;
+        }
+      }
+
       _fetchData();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            status == 'shipped'
-                ? "Surat Jalan dikirim, stok terpotong."
-                : "Draft Surat Jalan berhasil disimpan.",
-          ),
+        const SnackBar(
+          content: Text("Tersimpan, namun gagal memotong stok otomatis."),
+          backgroundColor: Colors.orange,
         ),
       );
     } else {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal menyimpan Surat Jalan.")),
+        const SnackBar(
+          content: Text(
+            "Gagal menyimpan Surat Jalan. (Ada error di database Backend)",
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
-  // --- AKSI PERUBAHAN STATUS & DELETE ---
   void _executeAction(
     int id,
     String actionTitle,
@@ -590,23 +602,27 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Delivery Orders (Surat Jalan)",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Delivery Orders (Surat Jalan)",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        "Manajemen pengiriman barang pesanan ke pelanggan",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
+                        SizedBox(height: 5),
+                        Text(
+                          "Manajemen pengiriman barang pesanan ke pelanggan",
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: AppColors.primary),
@@ -630,7 +646,7 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                   size: 18,
                 ),
                 label: const Text(
-                  "Buat Surat Jalan (Kirim SPK)",
+                  "Kirim Barang Baru (Surat Jalan)",
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -703,8 +719,8 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                                   ),
                                   DataCell(
                                     Text(
-                                      item['sales_order']?['no_spk'] ??
-                                          item['no_spk'] ??
+                                      item['no_spk'] ??
+                                          item['sales_order']?['no_spk'] ??
                                           '-',
                                     ),
                                   ),
@@ -794,19 +810,6 @@ class _DeliveryOrdersPageState extends State<DeliveryOrdersPage> {
                                               item['id'],
                                               "Konfirmasi Terima",
                                               DataService().confirmReceivedDO,
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.cancel,
-                                              color: Colors.red,
-                                              size: 20,
-                                            ),
-                                            tooltip: 'Batalkan Pengiriman',
-                                            onPressed: () => _executeAction(
-                                              item['id'],
-                                              "Batal & Hapus",
-                                              DataService().deleteDeliveryOrder,
                                             ),
                                           ),
                                         ],

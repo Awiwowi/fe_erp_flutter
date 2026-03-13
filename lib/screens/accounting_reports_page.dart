@@ -15,7 +15,7 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
   List<dynamic> _coas = [];
   bool _isLoadingCoa = true;
 
-  // Filter Tanggal (Digunakan bersama oleh kedua tab)
+  // Filter Tanggal (Default: 1 Bulan Terakhir)
   final TextEditingController _startCtrl = TextEditingController(
     text: DateTime(
       DateTime.now().year,
@@ -30,11 +30,11 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
   // State Buku Besar (Tab 1)
   int? _selectedAccountId;
   bool _isSearchingLedger = false;
-  Map<String, dynamic>? _ledgerResult; // Menampung 1 object full dari PHP
+  Map<String, dynamic>? _ledgerResult;
 
   // State Neraca Saldo (Tab 2)
   bool _isSearchingTrialBalance = false;
-  Map<String, dynamic>? _trialBalanceResult; // Menampung 1 object full dari PHP
+  Map<String, dynamic>? _trialBalanceResult;
 
   final currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
@@ -45,17 +45,32 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
   @override
   void initState() {
     super.initState();
-    _fetchCoas();
+    _fetchInitialData();
   }
 
-  void _fetchCoas() async {
+  // --- FUNGSI LOAD AWAL (DIPERBARUI) ---
+  void _fetchInitialData() async {
+    // 1. Ambil data Dropdown COA
     var coas = await DataService().getChartOfAccounts();
     if (mounted) {
       setState(() {
         _coas = coas;
         _isLoadingCoa = false;
+
+        // OTOMATIS PILIH AKUN PERTAMA JIKA ADA
+        if (_coas.isNotEmpty) {
+          _selectedAccountId = _coas.first['id'];
+        }
       });
+
+      // Jika ada akun yang terpilih, LANGSUNG tarik data Buku Besarnya
+      if (_selectedAccountId != null) {
+        _filterLedger();
+      }
     }
+
+    // 2. LANGSUNG tarik Neraca Saldo (Trial Balance) juga
+    _filterTrialBalance();
   }
 
   Future<void> _selectDate(TextEditingController controller) async {
@@ -72,12 +87,8 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
 
   // --- AKSI GET BUKU BESAR ---
   void _filterLedger() async {
-    if (_selectedAccountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pilih Akun COA terlebih dahulu!")),
-      );
-      return;
-    }
+    if (_selectedAccountId == null) return;
+
     setState(() => _isSearchingLedger = true);
     var res = await DataService().getLedgerDetail(
       _selectedAccountId!,
@@ -155,7 +166,7 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- KOTAK FILTER (DIPERBAIKI) ---
+          // --- KOTAK FILTER ---
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -187,9 +198,7 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                   const Center(child: CircularProgressIndicator())
                 else
                   Column(
-                    // UBAH ROW MENJADI COLUMN AGAR BESAR
                     children: [
-                      // 1. DROPDOWN PILIH AKUN
                       SizedBox(
                         width: double.infinity,
                         child: DropdownButtonFormField<int>(
@@ -197,10 +206,10 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                           style: const TextStyle(
                             fontSize: 16,
                             color: Colors.black,
-                          ), // Ukuran teks dropdown
+                          ),
                           decoration: const InputDecoration(
                             labelText: "Pilih Akun",
-                            labelStyle: TextStyle(fontSize: 16), // Ukuran label
+                            labelStyle: TextStyle(fontSize: 16),
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.account_balance),
                           ),
@@ -215,23 +224,23 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                                 ),
                               )
                               .toList(),
-                          onChanged: (val) =>
-                              setState(() => _selectedAccountId = val),
+                          onChanged: (val) {
+                            setState(() => _selectedAccountId = val);
+                            // Otomatis tarik data jika ganti dropdown
+                            if (val != null) _filterLedger();
+                          },
                         ),
                       ),
-                      const SizedBox(height: 20), // Spasi vertikal antar input
-                      // 2. DARI TANGGAL
+                      const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
                         child: TextFormField(
                           controller: _startCtrl,
                           readOnly: true,
-                          style: const TextStyle(
-                            fontSize: 16,
-                          ), // Ukuran teks input
+                          style: const TextStyle(fontSize: 16),
                           decoration: const InputDecoration(
                             labelText: "Dari Tanggal",
-                            labelStyle: TextStyle(fontSize: 16), // Ukuran label
+                            labelStyle: TextStyle(fontSize: 16),
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.date_range),
                           ),
@@ -239,8 +248,6 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // 3. SAMPAI TANGGAL
                       SizedBox(
                         width: double.infinity,
                         child: TextFormField(
@@ -256,11 +263,10 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                           onTap: () => _selectDate(_endCtrl),
                         ),
                       ),
-                      const SizedBox(height: 30), // Spasi besar sebelum tombol
-                      // 4. TOMBOL TAMPILKAN (LEBAR PENUH)
+                      const SizedBox(height: 30),
                       SizedBox(
                         width: double.infinity,
-                        height: 55, // Tombol lebih tinggi
+                        height: 55,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
@@ -300,6 +306,27 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
           ),
           const SizedBox(height: 20),
 
+          // --- LOADING INDIKATOR UNTUK BUKU BESAR ---
+          if (_isSearchingLedger && _ledgerResult == null)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+
+          // --- PESAN JIKA KOSONG ---
+          if (_ledgerResult == null && !_isSearchingLedger)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text(
+                  "Silakan pilih akun untuk melihat rincian Buku Besar.",
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              ),
+            ),
+
           // --- KOTAK HASIL BUKU BESAR ---
           if (_ledgerResult != null)
             Container(
@@ -318,17 +345,19 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Rincian Transaksi Akun: ${_ledgerResult!['account']['name']}",
+                        "Rincian Akun: ${_ledgerResult!['account']['name']}",
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (summary != null)
+                      if (summary != null) ...[
+                        const SizedBox(height: 4),
                         Text(
                           "Saldo Akhir: ${currencyFormatter.format(double.tryParse(summary['saldo_akhir']?.toString() ?? '0'))}",
                           style: const TextStyle(
@@ -337,6 +366,7 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                             color: Colors.blue,
                           ),
                         ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 15),
@@ -483,7 +513,7 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- KOTAK FILTER (DIPERBAIKI) ---
+          // --- KOTAK FILTER ---
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -494,10 +524,9 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
               ],
             ),
             child: Column(
-              // UBAH ROW MENJADI COLUMN
               children: [
                 const Text(
-                  "Tarik Neraca Saldo",
+                  "Filter Neraca Saldo",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -507,7 +536,6 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                 const SizedBox(height: 25),
                 Column(
                   children: [
-                    // DARI TANGGAL
                     SizedBox(
                       width: double.infinity,
                       child: TextFormField(
@@ -524,8 +552,6 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // SAMPAI TANGGAL
                     SizedBox(
                       width: double.infinity,
                       child: TextFormField(
@@ -542,8 +568,6 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                       ),
                     ),
                     const SizedBox(height: 30),
-
-                    // TOMBOL (LEBAR PENUH)
                     SizedBox(
                       width: double.infinity,
                       height: 55,
@@ -589,6 +613,9 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
           const SizedBox(height: 20),
 
           // --- KOTAK HASIL NERACA SALDO ---
+          if (_isSearchingTrialBalance && _trialBalanceResult == null)
+            const Center(child: CircularProgressIndicator()),
+
           if (_trialBalanceResult != null)
             Container(
               padding: const EdgeInsets.all(20),
@@ -609,13 +636,17 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "Neraca Saldo (Trial Balance)",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                      const Expanded(
+                        child: Text(
+                          "Neraca Saldo (Trial Balance)",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -642,7 +673,14 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                   ),
                   const Divider(height: 30),
 
-                  // LOOPING PER TIPE AKUN DARI PHP
+                  if (byType.isEmpty)
+                    const Center(
+                      child: Text(
+                        "Tidak ada saldo tercatat pada periode ini.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+
                   ...byType.entries.map((entry) {
                     String typeName = entry.key.toUpperCase();
                     List<dynamic> accounts = entry.value;
@@ -725,7 +763,7 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       Text(
-                        "TOTAL KESELURUHAN DEBIT: \n${currencyFormatter.format(totalDebit)}",
+                        "TOTAL DEBIT: \n${currencyFormatter.format(totalDebit)}",
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 16,
@@ -734,7 +772,7 @@ class _AccountingReportsPageState extends State<AccountingReportsPage> {
                         ),
                       ),
                       Text(
-                        "TOTAL KESELURUHAN KREDIT: \n${currencyFormatter.format(totalCredit)}",
+                        "TOTAL KREDIT: \n${currencyFormatter.format(totalCredit)}",
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 16,

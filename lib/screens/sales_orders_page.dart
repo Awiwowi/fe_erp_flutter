@@ -648,22 +648,6 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 15),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                    onPressed: _showCreateDialog,
-                    icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                    label: const Text(
-                      "Buat SO Baru (Manual)",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 20),

@@ -24,6 +24,7 @@ import 'package:fe_erp_flutter/screens/raw_materials_page.dart';
 import 'package:fe_erp_flutter/screens/sales_invoices_page.dart';
 import 'package:fe_erp_flutter/screens/sales_orders_page.dart';
 import 'package:fe_erp_flutter/screens/sales_quotations_page.dart';
+import 'package:fe_erp_flutter/screens/sales_report_page.dart';
 import 'package:fe_erp_flutter/screens/sales_returns_page.dart';
 import 'package:fe_erp_flutter/screens/stock_adjustment_page.dart';
 import 'package:fe_erp_flutter/screens/stock_initial_page.dart';
@@ -254,6 +255,8 @@ class _DashboardPageState extends State<DashboardPage> {
         return const SalesInvoicesPage();
       case 40:
         return const SalesReturnsPage();
+      case 41:
+        return const SalesReportPage();
       case 98:
         return const Center(child: Text("Settings Page"));
       default:

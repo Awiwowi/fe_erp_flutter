@@ -336,12 +336,15 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Chart of Accounts (COA)",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                const Expanded(
+                  child: Text(
+                    "Chart of Accounts (COA)",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(

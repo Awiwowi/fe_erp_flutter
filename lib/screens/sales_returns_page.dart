@@ -55,7 +55,7 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          "Detail Retur: ${detail['no_retur'] ?? '-'}",
+          "Detail Retur: ${detail['return_no'] ?? '-'}",
           style: const TextStyle(color: AppColors.primary),
         ),
         content: ConstrainedBox(
@@ -68,9 +68,14 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Customer: ${detail['customer']?['name'] ?? '-'}"),
-                Text("Tanggal Retur: ${detail['tanggal'] ?? '-'}"),
-                Text("Catatan/Alasan: ${detail['notes'] ?? '-'}"),
+                Text(
+                  "Referensi Faktur: ${detail['invoice']?['no_invoice'] ?? '-'}",
+                ),
+                Text(
+                  "Customer: ${detail['invoice']?['customer']?['name'] ?? '-'}",
+                ),
+                Text("Tanggal Retur: ${detail['return_date'] ?? '-'}"),
+                Text("Catatan/Alasan: ${detail['reason'] ?? '-'}"),
                 const Divider(height: 20),
                 const Text(
                   "Barang yang Dikembalikan:",
@@ -86,6 +91,7 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                     columns: const [
                       DataColumn(label: Text("Produk")),
                       DataColumn(label: Text("Qty Dikembalikan")),
+                      DataColumn(label: Text("Kondisi Fisik")),
                     ],
                     rows: items.map((item) {
                       String prodName =
@@ -93,7 +99,20 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                           item['product']?['name'] ??
                           '-';
                       String qty = item['qty']?.toString() ?? '0';
-
+                      String cond;
+                      switch (item['condition']) {
+                        case 'good':
+                          cond = 'Bagus (Good)';
+                          break;
+                        case 'damaged':
+                          cond = 'Rusak (Damaged)';
+                          break;
+                        case 'reject':
+                          cond = 'Reject';
+                          break;
+                        default:
+                          cond = item['condition'] ?? '-';
+                      }
                       return DataRow(
                         cells: [
                           DataCell(Text(prodName)),
@@ -106,6 +125,7 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                               ),
                             ),
                           ),
+                          DataCell(Text(cond)),
                         ],
                       );
                     }).toList(),
@@ -125,33 +145,76 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
     );
   }
 
-  // --- MODAL BUAT RETUR BARU ---
+  // --- MODAL BUAT RETUR DARI INVOICE ---
   void _showCreateDialog() async {
+    // ✅ Simpan dari page context di sini — SEBELUM dialog apapun dibuka
+    final messenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (c) => const Center(child: CircularProgressIndicator()),
     );
 
-    var customers = await DataService().getCustomers();
-    var products = await DataService().getProducts();
+    var invoices = await DataService().getSalesInvoices();
+
+    var validInvoices = invoices.where((inv) {
+      String status = (inv['status'] ?? '').toString().toLowerCase();
+      return status != 'canceled' && status != 'draft';
+    }).toList();
 
     if (!mounted) return;
     Navigator.pop(context);
 
-    int? selectedCustomerId;
+    int? selectedInvoiceId;
     final dateCtrl = TextEditingController(
       text: DateTime.now().toIso8601String().split('T')[0],
     );
     final notesCtrl = TextEditingController();
     List<Map<String, dynamic>> returnItems = [];
+    bool isLoadingItems = false;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (dialogContext, setStateDialog) {
+            void fetchInvoiceItems(int invoiceId) async {
+              setStateDialog(() {
+                isLoadingItems = true;
+                returnItems = [];
+              });
+
+              var res = await DataService().getSalesInvoiceDetail(invoiceId);
+              var detail = res?['data'] ?? res;
+
+              if (detail != null) {
+                List<dynamic> invItems = detail['items'] ?? [];
+                setStateDialog(() {
+                  returnItems = invItems.map((item) {
+                    return {
+                      'product_id': item['product_id'],
+                      'product_name':
+                          item['product']?['nama'] ??
+                          item['product']?['name'] ??
+                          'Produk',
+                      'qty_invoice':
+                          double.tryParse(item['qty']?.toString() ?? '0') ?? 0,
+                      'price':
+                          double.tryParse(item['price']?.toString() ?? '0') ??
+                          0,
+                      'qtyCtrl': TextEditingController(text: '0'),
+                      'condition': 'good',
+                    };
+                  }).toList();
+                  isLoadingItems = false;
+                });
+              } else {
+                setStateDialog(() => isLoadingItems = false);
+              }
+            }
+
             return AlertDialog(
               title: const Text(
                 "Buat Retur Penjualan",
@@ -159,8 +222,8 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
               ),
               content: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.8,
-                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  maxWidth: MediaQuery.of(dialogContext).size.width * 0.8,
+                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -170,40 +233,35 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         color: Colors.red.shade50,
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.red,
-                            ),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                "Proses ini akan mencatat pengembalian barang dari pelanggan ke gudang.",
-                              ),
-                            ),
-                          ],
+                        child: const Text(
+                          "Pilih Faktur (Invoice) pelanggan. Lalu isi Qty pada barang yang ingin dikembalikan. Biarkan '0' jika barang tersebut tidak diretur.",
                         ),
                       ),
                       const SizedBox(height: 15),
-
                       DropdownButtonFormField<int>(
                         decoration: const InputDecoration(
-                          labelText: "Pilih Customer *",
+                          labelText: "Pilih Faktur Penjualan *",
                           border: OutlineInputBorder(),
                         ),
-                        value: selectedCustomerId,
+                        value: selectedInvoiceId,
                         isExpanded: true,
-                        items: customers
+                        items: validInvoices
                             .map(
-                              (c) => DropdownMenuItem<int>(
-                                value: c['id'],
-                                child: Text(c['name'] ?? '-'),
+                              (inv) => DropdownMenuItem<int>(
+                                value: inv['id'],
+                                child: Text(
+                                  "${inv['no_invoice']} - ${inv['customer']?['name'] ?? ''}",
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             )
                             .toList(),
-                        onChanged: (val) =>
-                            setStateDialog(() => selectedCustomerId = val),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setStateDialog(() => selectedInvoiceId = val);
+                            fetchInvoiceItems(val);
+                          }
+                        },
                       ),
                       const SizedBox(height: 10),
                       TextField(
@@ -222,156 +280,206 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                         ),
                         maxLines: 2,
                       ),
-
                       const Divider(height: 30, thickness: 2),
                       const Text(
-                        "Item Retur:",
+                        "Barang di dalam Faktur:",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 10),
-
-                      ...returnItems.asMap().entries.map((entry) {
-                        int index = entry.key;
-                        Map<String, dynamic> item = entry.value;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
+                      if (isLoadingItems)
+                        const Center(child: CircularProgressIndicator())
+                      else if (selectedInvoiceId == null)
+                        const Center(
+                          child: Text(
+                            "Silakan pilih Faktur terlebih dahulu.",
+                            style: TextStyle(color: Colors.grey),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: DropdownButtonFormField<int>(
-                                  decoration: const InputDecoration(
-                                    labelText: "Produk",
-                                    isDense: true,
+                        )
+                      else if (returnItems.isEmpty)
+                        const Center(
+                          child: Text(
+                            "Faktur ini tidak memiliki data barang.",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        )
+                      else
+                        // FIX OVERFLOW #2: Ganti ke Column per item agar tidak
+                        // semua field berjejal dalam satu Row
+                        ...returnItems.map((item) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Nama produk & maks qty
+                                Text(
+                                  item['product_name'],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  value: item['product_id'],
-                                  isExpanded: true,
-                                  items: products
-                                      .map(
-                                        (prod) => DropdownMenuItem<int>(
-                                          value: prod['id'],
-                                          child: Text(
-                                            prod['nama'] ?? prod['name'] ?? '-',
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                                ),
+                                Text(
+                                  "Maks. Qty: ${item['qty_invoice'].toStringAsFixed(0)}",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                // Qty & Kondisi dalam Row — sekarang lebih lebar
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextField(
+                                        controller: item['qtyCtrl'],
+                                        decoration: const InputDecoration(
+                                          labelText: "Qty Diretur",
+                                          border: OutlineInputBorder(),
+                                          isDense: true,
                                         ),
-                                      )
-                                      .toList(),
-                                  onChanged: (val) => setStateDialog(
-                                    () => item['product_id'] = val,
-                                  ),
+                                        keyboardType: TextInputType.number,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      flex: 3,
+                                      child: DropdownButtonFormField<String>(
+                                        value: item['condition'],
+                                        isExpanded: true,
+                                        decoration: const InputDecoration(
+                                          labelText: "Kondisi",
+                                          border: OutlineInputBorder(),
+                                          isDense: true,
+                                        ),
+                                        items: const [
+                                          DropdownMenuItem(
+                                            value: 'good',
+                                            child: Text("Bagus (Good)"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'damaged',
+                                            child: Text("Rusak (Damaged)"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'reject',
+                                            child: Text("Reject"),
+                                          ),
+                                        ],
+                                        onChanged: (val) => setStateDialog(
+                                          () => item['condition'] = val,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                flex: 1,
-                                child: TextField(
-                                  controller: item['qtyCtrl'],
-                                  decoration: const InputDecoration(
-                                    labelText: "Qty",
-                                    isDense: true,
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () {
-                                  item['qtyCtrl'].dispose();
-                                  setStateDialog(
-                                    () => returnItems.removeAt(index),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: () => setStateDialog(() {
-                            returnItems.add({
-                              'product_id': null,
-                              'qtyCtrl': TextEditingController(text: "1"),
-                            });
-                          }),
-                          icon: const Icon(Icons.add_circle),
-                          label: const Text("Tambah Item"),
-                        ),
-                      ),
+                              ],
+                            ),
+                          );
+                        }),
                     ],
                   ),
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: const Text("Batal"),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: Colors.red.shade600,
                   ),
-                  onPressed: () async {
-                    if (selectedCustomerId == null ||
-                        dateCtrl.text.isEmpty ||
-                        returnItems.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            "Lengkapi form & minimal 1 item produk!",
-                          ),
-                        ),
-                      );
-                      return;
-                    }
+                  onPressed: returnItems.isEmpty
+                      ? null
+                      : () async {
+                          if (selectedInvoiceId == null ||
+                              dateCtrl.text.isEmpty) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text("Lengkapi Faktur dan Tanggal!"),
+                              ),
+                            );
+                            return;
+                          }
 
-                    Map<String, dynamic> payload = {
-                      "customer_id": selectedCustomerId,
-                      "tanggal": dateCtrl.text,
-                      "notes": notesCtrl.text,
-                      "items": returnItems
-                          .map(
-                            (i) => {
-                              "product_id": i['product_id'],
-                              "qty": double.tryParse(i['qtyCtrl'].text) ?? 1,
-                            },
-                          )
-                          .toList(),
-                    };
+                          List<Map<String, dynamic>> payloadItems = [];
+                          for (var i in returnItems) {
+                            double qtyRetur =
+                                double.tryParse(i['qtyCtrl'].text) ?? 0;
+                            if (qtyRetur > 0) {
+                              if (qtyRetur > i['qty_invoice']) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Qty retur ${i['product_name']} tidak boleh melebihi qty pembelian!",
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              payloadItems.add({
+                                "product_id": i['product_id'],
+                                "qty": qtyRetur.toInt(),
+                                "condition": i['condition'],
+                                "price": i['price'],
+                              });
+                            }
+                          }
 
-                    Navigator.pop(context);
-                    setState(() => _isLoading = true);
-                    bool success = await DataService().createSalesReturn(
-                      payload,
-                    );
-                    if (!mounted) return;
+                          if (payloadItems.isEmpty) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Isi 'Qty' pada minimal 1 barang!",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
-                    if (success) {
-                      _fetchData();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Retur Penjualan berhasil dibuat!"),
-                        ),
-                      );
-                    } else {
-                      setState(() => _isLoading = false);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Gagal membuat Retur.")),
-                      );
-                    }
-                  },
+                          Map<String, dynamic> payload = {
+                            "sales_invoice_id": selectedInvoiceId,
+                            "return_date": dateCtrl.text,
+                            "reason": notesCtrl.text,
+                            "items": payloadItems,
+                          };
+
+                          Navigator.pop(dialogContext);
+                          setState(() => _isLoading = true);
+
+                          bool success = await DataService().createSalesReturn(
+                            payload,
+                          );
+                          if (!mounted) return;
+
+                          if (success) {
+                            _fetchData();
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Pengajuan Retur berhasil dibuat!",
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } else {
+                            setState(() => _isLoading = false);
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Gagal membuat Retur. Cek koneksi & validasi.",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
                   child: const Text(
                     "Simpan Retur",
                     style: TextStyle(color: Colors.white),
@@ -385,59 +493,6 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
     );
   }
 
-  // --- AKSI PERUBAHAN STATUS ---
-  void _changeStatus(int id, String statusTarget) async {
-    bool confirm =
-        await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text("Ubah Status menjadi ${statusTarget.toUpperCase()}?"),
-            content: Text(
-              "Aksi ini ${statusTarget == 'approved' ? 'akan menyetujui retur dan menambahkan stok kembali ke gudang' : 'akan menolak pengajuan retur'}. Lanjutkan?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text("Batal"),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: statusTarget == 'approved'
-                      ? Colors.green
-                      : Colors.red,
-                ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text(
-                  "Ya, Lanjutkan",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-
-    if (confirm) {
-      setState(() => _isLoading = true);
-      bool success = await DataService().updateSalesReturnStatus(
-        id,
-        statusTarget,
-      );
-      if (!mounted) return;
-      if (success) {
-        _fetchData();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Status Retur diubah menjadi $statusTarget")),
-        );
-      } else {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Gagal mengubah status")));
-      }
-    }
-  }
-
   // --- AKSI HAPUS ---
   void _deleteReturn(int id) async {
     bool confirm =
@@ -446,7 +501,7 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
           builder: (ctx) => AlertDialog(
             title: const Text("Hapus Data Retur?"),
             content: const Text(
-              "Data ini akan dihapus secara permanen. Lanjutkan?",
+              "Data retur ini akan dihapus. Stok & piutang akan dikembalikan ke kondisi sebelum retur. Lanjutkan?",
             ),
             actions: [
               TextButton(
@@ -484,19 +539,6 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Colors.orange.shade600;
-      case 'approved':
-        return Colors.green.shade600;
-      case 'rejected':
-        return Colors.red.shade600;
-      default:
-        return Colors.grey.shade600;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -512,25 +554,31 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // FIX OVERFLOW #1: Wrap Column dengan Expanded agar tidak
+              // melampaui batas Row ketika teks judul panjang
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Sales Returns (Retur Penjualan)",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          "Sales Returns (Retur Penjualan)",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        "Pencatatan pengembalian barang dari pelanggan",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
+                        Text(
+                          "Pencatatan pengembalian barang dari Invoice",
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: AppColors.primary),
@@ -554,12 +602,11 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                   size: 18,
                 ),
                 label: const Text(
-                  "Buat Retur Baru",
+                  "Ajukan Retur Baru",
                   style: TextStyle(color: Colors.white),
                 ),
               ),
               const SizedBox(height: 20),
-
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
@@ -583,19 +630,19 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                               ),
                               DataColumn(
                                 label: Text(
+                                  "Terkait Faktur",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
                                   "Tanggal",
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
                               DataColumn(
                                 label: Text(
-                                  "Customer",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              DataColumn(
-                                label: Text(
-                                  "Status",
+                                  "Total Retur",
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
@@ -607,46 +654,35 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                               ),
                             ],
                             rows: _returns.map((item) {
-                              String status = (item['status'] ?? 'pending')
-                                  .toString()
-                                  .toLowerCase();
-                              Color statusColor = _getStatusColor(status);
-
+                              String invoiceNo =
+                                  item['invoice']?['no_invoice'] ?? '-';
+                              String totalRetur =
+                                  item['total_return_amount']?.toString() ??
+                                  '0';
                               return DataRow(
                                 cells: [
                                   DataCell(
                                     Text(
-                                      item['no_retur'] ?? '-',
+                                      item['return_no'] ?? '-',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
-                                  DataCell(Text(item['tanggal'] ?? '-')),
                                   DataCell(
-                                    Text(item['customer']?['name'] ?? '-'),
+                                    Text(
+                                      invoiceNo,
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                      ),
+                                    ),
                                   ),
+                                  DataCell(Text(item['return_date'] ?? '-')),
                                   DataCell(
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: statusColor,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        status.toUpperCase(),
-                                        style: TextStyle(
-                                          color: statusColor,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    Text(
+                                      totalRetur,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
@@ -664,42 +700,16 @@ class _SalesReturnsPageState extends State<SalesReturnsPage> {
                                           onPressed: () =>
                                               _showDetailModal(item['id']),
                                         ),
-                                        if (status == 'pending') ...[
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.check_circle,
-                                              color: Colors.green,
-                                              size: 20,
-                                            ),
-                                            tooltip: 'Setujui Retur',
-                                            onPressed: () => _changeStatus(
-                                              item['id'],
-                                              'approved',
-                                            ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                            size: 20,
                                           ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.cancel,
-                                              color: Colors.red,
-                                              size: 20,
-                                            ),
-                                            tooltip: 'Tolak Retur',
-                                            onPressed: () => _changeStatus(
-                                              item['id'],
-                                              'rejected',
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              color: Colors.grey,
-                                              size: 20,
-                                            ),
-                                            tooltip: 'Hapus',
-                                            onPressed: () =>
-                                                _deleteReturn(item['id']),
-                                          ),
-                                        ],
+                                          tooltip: 'Hapus',
+                                          onPressed: () =>
+                                              _deleteReturn(item['id']),
+                                        ),
                                       ],
                                     ),
                                   ),

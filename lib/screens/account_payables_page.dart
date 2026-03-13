@@ -105,22 +105,26 @@ class _AccountPayablesPageState extends State<AccountPayablesPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Daftar Hutang Usaha (Account Payable)",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Daftar Hutang Usaha (Account Payable)",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        "Catatan hutang pembelian ke supplier berdasarkan TTF",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
+                        Text(
+                          "Catatan hutang pembelian ke supplier berdasarkan TTF",
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: AppColors.primary),
